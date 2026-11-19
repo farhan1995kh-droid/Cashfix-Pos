@@ -24,12 +24,20 @@ jobs:
       - name: Build APK
         run: |
           yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkeypair -v -keystore debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=CashFix POS, OU=Dev, O=CashFix, L=Al Hofuf, S=Eastern Province, C=SA"
+          fi
+
           if [ -f "./gradlew" ]; then
             sed -i 's/\r$//' gradlew
             chmod +x gradlew
-            ./gradlew assembleDebug --continue --stacktrace
+            ./gradlew assembleDebug --stacktrace
           else
-            gradle assembleDebug --continue --stacktrace
+            gradle assembleDebug --stacktrace
           fi
 
       - uses: actions/upload-artifact@v4

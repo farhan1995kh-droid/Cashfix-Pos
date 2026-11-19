@@ -1,0 +1,6 @@
+{
+  "name": "CashFix POS",
+  "description": "Offline-first Bilingual (EN/AR) Point of Sale & QR Self-Ordering system for Saudi retail, cafes, and restaurants with 15% VAT, ZATCA QR receipts, split payments, and multi-branch management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

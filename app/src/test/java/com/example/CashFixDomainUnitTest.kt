@@ -477,4 +477,75 @@ class CashFixDomainUnitTest {
         assertTrue(preview.contains("Counted Cash: 815.00 SAR"))
         assertTrue(preview.contains("CASH VARIANCE: +15.00 SAR"))
     }
+
+    @Test
+    fun deduplicatedAvailableRemovesDuplicateAndUnavailableItems() {
+        val rawProducts = listOf(
+            Product("p1", "cat_zingers", "Signature Zinger", "زينجر سيجنتشر", "ZN-1", "111", 15.0, 18.0, 50, true),
+            Product("p1", "cat_zingers", "Signature Zinger", "زينجر سيجنتشر", "ZN-1", "111", 15.0, 18.0, 50, true),
+            Product("p2", "cat_zingers", " signature  zinger ", "زينجر سيجنتشر", "ZN-2", "112", 15.0, 18.0, 40, true),
+            Product("p3", "cat_zingers", "Sold Out Burger", "برجر غير متوفر", "ZN-3", "113", 16.0, 19.0, 0, false),
+            Product("p4", "cat_drinks", "Pepsi", "بيبسي", "DR-1", "211", 4.0, 5.0, 100, true)
+        )
+        val cleaned = rawProducts.deduplicatedAvailable()
+        assertEquals(2, cleaned.size)
+        assertEquals("p1", cleaned[0].id)
+        assertEquals("p4", cleaned[1].id)
+    }
+
+    @Test
+    fun qrWebMenuHtmlMatchesPosDashboardWithTableBadgeCategoriesSearchAndWakeLock() {
+        val gateway = com.example.hardware.QrSelfOrderGateway()
+        val categories = listOf(
+            Category("cat_zingers", "Burgers & Sandwiches", "برجر وساندويتشات", 1),
+            Category("cat_drinks", "Drinks", "المشروبات", 2)
+        )
+        val products = listOf(
+            Product("p1", "cat_zingers", "Signature Zinger", "زينجر سيجنتشر", "ZN-1", "111", 15.0, 18.0, 50, true),
+            Product("p1_dup", "cat_zingers", "Signature Zinger", "زينجر سيجنتشر", "ZN-1", "111", 15.0, 18.0, 50, true),
+            Product("p2", "cat_drinks", "Pepsi", "بيبسي", "DR-1", "211", 4.0, 5.0, 100, true)
+        )
+        gateway.updateCatalogSnapshot(
+            shopNameEn = "Crispy Nation",
+            shopNameAr = "كريسبي نيشن",
+            products = products,
+            categories = categories,
+            addressEn = "Al Hofuf, Saudi Arabia",
+            addressAr = "الأحساء، المملكة العربية السعودية"
+        )
+        val html = gateway.buildCustomerMenuHtml(
+            shopNameEn = "Crispy Nation",
+            shopNameAr = "كريسبي نيشن",
+            addressEn = "Al Hofuf, Saudi Arabia",
+            addressAr = "الأحساء، المملكة العربية السعودية",
+            tableCode = "T2",
+            categories = categories,
+            products = products
+        )
+        assertTrue(html.contains("Table: T2"))
+        assertTrue(html.contains("Burgers & Sandwiches"))
+        assertTrue(html.contains("navigator.wakeLock.request('screen')"))
+        assertTrue(html.contains("grid-template-columns:repeat(2,1fr)"))
+        assertTrue(html.contains("searchInput"))
+        assertTrue(html.contains("catStrip"))
+        // Deduplicated: Signature Zinger appears once in embedded catalog JSON
+        assertTrue(html.contains("\"id\":\"p1\""))
+        assertFalse(html.contains("\"id\":\"p1_dup\""))
+    }
+
+    @Test
+    fun alwaysOnAndBackgroundAlertsDefaultEnabledAndChannelsInitialize() {
+        val defaults = StoreSettings()
+        assertTrue(defaults.alwaysOnDisplay)
+        assertTrue(defaults.backgroundOrderAlertsEnabled)
+
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        com.example.hardware.QrOrderRuntimeHub.ensureNotificationChannels(context)
+        val monitorNotification = com.example.hardware.QrOrderRuntimeHub.buildMonitorNotification(
+            context = context,
+            port = 8090,
+            shopName = "Crispy Nation"
+        )
+        assertNotNull(monitorNotification)
+    }
 }

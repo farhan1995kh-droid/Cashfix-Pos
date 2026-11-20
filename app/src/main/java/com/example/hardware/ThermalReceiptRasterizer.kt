@@ -188,39 +188,39 @@ object ThermalReceiptRasterizer {
         // 1. Top Centered Bold Arabic & English Brand Header
         builder.addSpacer(14)
         val primaryTitle = settings.shopNameAr.ifBlank { settings.shopNameEn }
-        builder.addCenteredText(primaryTitle, sizePx = 36f, bold = true, rtl = true)
+        builder.addCenteredText(primaryTitle, sizePx = 44f, bold = true, rtl = true)
         if (settings.shopNameEn.isNotBlank() && settings.shopNameEn != primaryTitle) {
-            builder.addCenteredText(settings.shopNameEn, sizePx = 24f, bold = true, rtl = false)
+            builder.addCenteredText(settings.shopNameEn, sizePx = 30f, bold = true, rtl = false)
         }
 
         // 2. Centered Al Hofuf Address (Arabic & English) & 15-Digit VAT
         builder.addSpacer(4)
         if (settings.addressAr.isNotBlank()) {
-            builder.addCenteredText(settings.addressAr, sizePx = 21f, bold = false, rtl = true)
+            builder.addCenteredText(settings.addressAr, sizePx = 26f, bold = false, rtl = true)
         }
         if (settings.addressEn.isNotBlank() && settings.addressEn != settings.addressAr) {
-            builder.addCenteredText(settings.addressEn, sizePx = 19f, bold = false, rtl = false)
+            builder.addCenteredText(settings.addressEn, sizePx = 24f, bold = false, rtl = false)
         }
         if (settings.vatNumber.isNotBlank()) {
             builder.addSpacer(2)
-            builder.addCenteredText("الرقم الضريبي: ${settings.vatNumber}", sizePx = 21f, bold = true, rtl = true)
+            builder.addCenteredText("الرقم الضريبي: ${settings.vatNumber}", sizePx = 26f, bold = true, rtl = true)
         }
 
         // 3. Invoice Number & Timestamp (HH:MM:SS - DD.MM.YYYY)
         builder.addSpacer(4)
-        builder.addCenteredText("رقم الفاتورة : ${order.orderNumber}", sizePx = 23f, bold = true, rtl = true)
-        builder.addCenteredText(formatReceiptTimestamp(order.createdAt), sizePx = 20f, bold = false, rtl = false)
+        builder.addCenteredText("رقم الفاتورة : ${order.orderNumber}", sizePx = 28f, bold = true, rtl = true)
+        builder.addCenteredText(formatReceiptTimestamp(order.createdAt), sizePx = 25f, bold = false, rtl = false)
 
         // 4. Order Type Label & Customer Details
         builder.addDivider(thicknessPx = 2f)
-        builder.addCenteredText(resolveOrderTypeBilingual(order), sizePx = 23f, bold = true, rtl = true)
+        builder.addCenteredText(resolveOrderTypeBilingual(order), sizePx = 28f, bold = true, rtl = true)
         val customerMeta = listOfNotNull(
             order.customerName.takeIf { it.isNotBlank() },
             order.tableOrCarNumber.takeIf { it.isNotBlank() },
             order.customerPhone.takeIf { it.isNotBlank() }
         ).joinToString(" • ")
         if (customerMeta.isNotBlank()) {
-            builder.addCenteredText(customerMeta, sizePx = 20f, bold = false, rtl = true)
+            builder.addCenteredText(customerMeta, sizePx = 25f, bold = false, rtl = true)
         }
 
         // 5. Two-Column Items Table Header (LEFT = مبلغ Amount, RIGHT = منتج Product)
@@ -228,7 +228,7 @@ object ThermalReceiptRasterizer {
         builder.addTwoColumnRtlRow(
             rightText = "منتج / Product",
             leftText = "مبلغ / Amount",
-            sizePx = 21f,
+            sizePx = 26f,
             bold = true
         )
         builder.addDivider(thicknessPx = 2f)
@@ -257,54 +257,54 @@ object ThermalReceiptRasterizer {
 
         // 7. Total Item Count
         builder.addDivider(thicknessPx = 2f)
-        builder.addCenteredText("عدد المنتجات : $totalItemQty", sizePx = 22f, bold = true, rtl = true)
+        builder.addCenteredText("عدد المنتجات : $totalItemQty", sizePx = 27f, bold = true, rtl = true)
         builder.addDivider(thicknessPx = 2f)
 
         // 8. Summary Block (Subtotal, Discount, Taxable Amount, Tax 15%, Bold Grand Total)
-        builder.addTwoColumnRtlRow("المجموع الفرعي / Subtotal", "${formatNumber(preTaxSubtotal)} SAR", sizePx = 21f, bold = false)
+        builder.addTwoColumnRtlRow("المجموع الفرعي / Subtotal", "${formatNumber(preTaxSubtotal)} SAR", sizePx = 25f, bold = false)
         if (order.discountAmount > 0.001) {
-            builder.addTwoColumnRtlRow("الخصم / Discount", "-${formatNumber(order.discountAmount)} SAR", sizePx = 21f, bold = false)
+            builder.addTwoColumnRtlRow("الخصم / Discount", "-${formatNumber(order.discountAmount)} SAR", sizePx = 25f, bold = false)
         }
-        builder.addTwoColumnRtlRow("المبلغ الخاضع للضريبة / Taxable", "${formatNumber(taxableAmount)} SAR", sizePx = 21f, bold = false)
-        builder.addTwoColumnRtlRow("Tax 15% / الضريبة ١٥٪", "${formatNumber(order.vatAmount)} SAR", sizePx = 21f, bold = false)
+        builder.addTwoColumnRtlRow("المبلغ الخاضع للضريبة / Taxable", "${formatNumber(taxableAmount)} SAR", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("Tax 15% / الضريبة ١٥٪", "${formatNumber(order.vatAmount)} SAR", sizePx = 25f, bold = false)
         builder.addSpacer(4)
-        builder.addTwoColumnRtlRow("المجموع / Total", "${formatNumber(order.grandTotal)} SAR", sizePx = 27f, bold = true)
+        builder.addTwoColumnRtlRow("المجموع / Total", "${formatNumber(order.grandTotal)} SAR", sizePx = 33f, bold = true)
 
         // 9. Payment Method & Amount Paid
         builder.addDivider(thicknessPx = 2f)
         val p = order.payment
         if (p.isSplit) {
-            if (p.cashAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: كاش / Cash", "${formatNumber(p.cashAmount)} SAR", sizePx = 20f, bold = false)
-            if (p.madaAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: مدى / Mada", "${formatNumber(p.madaAmount)} SAR", sizePx = 20f, bold = false)
-            if (p.visaAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: فيزا / Visa", "${formatNumber(p.visaAmount)} SAR", sizePx = 20f, bold = false)
+            if (p.cashAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: كاش / Cash", "${formatNumber(p.cashAmount)} SAR", sizePx = 25f, bold = false)
+            if (p.madaAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: مدى / Mada", "${formatNumber(p.madaAmount)} SAR", sizePx = 25f, bold = false)
+            if (p.visaAmount > 0.001) builder.addTwoColumnRtlRow("طريقة الدفع: فيزا / Visa", "${formatNumber(p.visaAmount)} SAR", sizePx = 25f, bold = false)
             if (p.onlineAmount > 0.001) {
                 val appLabel = p.onlineCompanyEn.ifBlank { "Delivery App" }
-                builder.addTwoColumnRtlRow("طريقة الدفع: $appLabel", "${formatNumber(p.onlineAmount)} SAR", sizePx = 20f, bold = false)
+                builder.addTwoColumnRtlRow("طريقة الدفع: $appLabel", "${formatNumber(p.onlineAmount)} SAR", sizePx = 25f, bold = false)
             }
-            if (p.dueAmount > 0.001) builder.addTwoColumnRtlRow("آجل / Credit Due", "${formatNumber(p.dueAmount)} SAR", sizePx = 20f, bold = false)
+            if (p.dueAmount > 0.001) builder.addTwoColumnRtlRow("آجل / Credit Due", "${formatNumber(p.dueAmount)} SAR", sizePx = 25f, bold = false)
         } else {
-            builder.addTwoColumnRtlRow("طريقة الدفع", resolvePaymentMethodBilingual(order), sizePx = 21f, bold = true)
-            builder.addTwoColumnRtlRow("مبلغ", "${formatNumber(order.grandTotal)} SAR", sizePx = 21f, bold = false)
+            builder.addTwoColumnRtlRow("طريقة الدفع", resolvePaymentMethodBilingual(order), sizePx = 26f, bold = true)
+            builder.addTwoColumnRtlRow("مبلغ", "${formatNumber(order.grandTotal)} SAR", sizePx = 26f, bold = false)
         }
         if (p.cashTendered > 0.001) {
-            builder.addTwoColumnRtlRow("المستلم نقداً / Cash Tendered", "${formatNumber(p.cashTendered)} SAR", sizePx = 20f, bold = false)
-            builder.addTwoColumnRtlRow("الباقي / Change Due", "${formatNumber(p.changeDue)} SAR", sizePx = 20f, bold = true)
+            builder.addTwoColumnRtlRow("المستلم نقداً / Cash Tendered", "${formatNumber(p.cashTendered)} SAR", sizePx = 25f, bold = false)
+            builder.addTwoColumnRtlRow("الباقي / Change Due", "${formatNumber(p.changeDue)} SAR", sizePx = 25f, bold = true)
         }
 
         // 10. Served By + Thank-You Footer + Brand + Phone
         builder.addDivider(thicknessPx = 2f)
-        builder.addCenteredText("تمت خدمتك من قبل: ${order.cashierName}", sizePx = 21f, bold = true, rtl = true)
-        builder.addCenteredText("******", sizePx = 22f, bold = true, rtl = false)
+        builder.addCenteredText("تمت خدمتك من قبل: ${order.cashierName}", sizePx = 26f, bold = true, rtl = true)
+        builder.addCenteredText("******", sizePx = 26f, bold = true, rtl = false)
         if (settings.receiptFooterAr.isNotBlank()) {
-            builder.addCenteredText(settings.receiptFooterAr, sizePx = 21f, bold = true, rtl = true)
+            builder.addCenteredText(settings.receiptFooterAr, sizePx = 26f, bold = true, rtl = true)
         }
         if (settings.receiptFooterEn.isNotBlank() && settings.receiptFooterEn != settings.receiptFooterAr) {
-            builder.addCenteredText(settings.receiptFooterEn, sizePx = 19f, bold = false, rtl = false)
+            builder.addCenteredText(settings.receiptFooterEn, sizePx = 24f, bold = false, rtl = false)
         }
         builder.addSpacer(4)
-        builder.addCenteredText(primaryTitle, sizePx = 21f, bold = true, rtl = true)
+        builder.addCenteredText(primaryTitle, sizePx = 26f, bold = true, rtl = true)
         if (settings.phone.isNotBlank()) {
-            builder.addCenteredText(settings.phone, sizePx = 21f, bold = true, rtl = false)
+            builder.addCenteredText(settings.phone, sizePx = 26f, bold = true, rtl = false)
         }
 
         // 11. Customer Menu QR Code (drawn directly as monochrome bitmap pixels)
@@ -312,7 +312,7 @@ object ThermalReceiptRasterizer {
             val qrBitmap = ZatcaQrAndEscPos.generateQrBitmap(customerMenuUrl, 200)
             if (qrBitmap != null) {
                 builder.addSpacer(10)
-                builder.addCenteredText("امسح رمز QR للطلب من قائمتنا الرقمية", sizePx = 18f, bold = true, rtl = true)
+                builder.addCenteredText("امسح رمز QR للطلب من قائمتنا الرقمية", sizePx = 23f, bold = true, rtl = true)
                 builder.addCenteredBitmap(qrBitmap)
             }
         }
@@ -331,41 +331,41 @@ object ThermalReceiptRasterizer {
     ): Bitmap {
         val builder = ReceiptCanvasBuilder(typeface)
         builder.addSpacer(12)
-        builder.addCenteredText("نسخة المطبخ • RESTAURANT COPY", sizePx = 26f, bold = true, rtl = true)
-        builder.addCenteredText("لتحضير الطلب • FOR MAKING ORDER", sizePx = 21f, bold = true, rtl = true)
+        builder.addCenteredText("نسخة المطبخ • RESTAURANT COPY", sizePx = 32f, bold = true, rtl = true)
+        builder.addCenteredText("لتحضير الطلب • FOR MAKING ORDER", sizePx = 26f, bold = true, rtl = true)
         builder.addDivider(thicknessPx = 3f)
 
-        builder.addCenteredText(settings.shopNameAr.ifBlank { settings.shopNameEn }, sizePx = 25f, bold = true, rtl = true)
-        builder.addCenteredText(formatReceiptTimestamp(order.createdAt), sizePx = 20f, bold = false, rtl = false)
+        builder.addCenteredText(settings.shopNameAr.ifBlank { settings.shopNameEn }, sizePx = 31f, bold = true, rtl = true)
+        builder.addCenteredText(formatReceiptTimestamp(order.createdAt), sizePx = 25f, bold = false, rtl = false)
         builder.addDivider(thicknessPx = 2f)
 
-        builder.addTwoColumnRtlRow("رقم الطلب / Order #", order.orderNumber, sizePx = 24f, bold = true)
-        builder.addTwoColumnRtlRow("نوع الطلب / Type", resolveOrderTypeBilingual(order), sizePx = 21f, bold = true)
+        builder.addTwoColumnRtlRow("رقم الطلب / Order #", order.orderNumber, sizePx = 30f, bold = true)
+        builder.addTwoColumnRtlRow("نوع الطلب / Type", resolveOrderTypeBilingual(order), sizePx = 26f, bold = true)
         if (order.customerName.isNotBlank()) {
-            builder.addTwoColumnRtlRow("العميل / Customer", order.customerName, sizePx = 22f, bold = true)
+            builder.addTwoColumnRtlRow("العميل / Customer", order.customerName, sizePx = 27f, bold = true)
         }
         if (order.tableOrCarNumber.isNotBlank()) {
-            builder.addTwoColumnRtlRow("طاولة / سيارة", order.tableOrCarNumber, sizePx = 22f, bold = true)
+            builder.addTwoColumnRtlRow("طاولة / سيارة", order.tableOrCarNumber, sizePx = 27f, bold = true)
         }
         if (order.customerPhone.isNotBlank()) {
-            builder.addTwoColumnRtlRow("الجوال / Mobile", order.customerPhone, sizePx = 20f, bold = false)
+            builder.addTwoColumnRtlRow("الجوال / Mobile", order.customerPhone, sizePx = 25f, bold = false)
         }
-        builder.addTwoColumnRtlRow("الكاشير / Cashier", order.cashierName, sizePx = 20f, bold = false)
+        builder.addTwoColumnRtlRow("الكاشير / Cashier", order.cashierName, sizePx = 25f, bold = false)
 
         if (order.notes.isNotBlank()) {
             builder.addSpacer(4)
-            builder.addCenteredText("ملاحظة الطلب: ${order.notes}", sizePx = 22f, bold = true, rtl = true)
+            builder.addCenteredText("ملاحظة الطلب: ${order.notes}", sizePx = 27f, bold = true, rtl = true)
         }
 
         builder.addDivider(thicknessPx = 2f)
         order.items.forEachIndexed { idx, item ->
             val primary = "[ ${item.qty}x ]  ${item.nameAr.ifBlank { item.nameEn }}"
-            builder.addRightAlignedText(primary, sizePx = 25f, bold = true, rtl = true)
+            builder.addRightAlignedText(primary, sizePx = 31f, bold = true, rtl = true)
             if (item.nameEn.isNotBlank() && item.nameEn != item.nameAr) {
-                builder.addRightAlignedText(item.nameEn, sizePx = 21f, bold = false, rtl = false)
+                builder.addRightAlignedText(item.nameEn, sizePx = 26f, bold = true, rtl = false)
             }
             if (item.note.isNotBlank()) {
-                builder.addRightAlignedText(">> ${item.note}", sizePx = 21f, bold = true, rtl = true)
+                builder.addRightAlignedText(">> ${item.note}", sizePx = 26f, bold = true, rtl = true)
             }
             if (idx < order.items.lastIndex) {
                 builder.addDashedDivider()
@@ -374,7 +374,7 @@ object ThermalReceiptRasterizer {
 
         builder.addDivider(thicknessPx = 2f)
         val totalQty = order.items.sumOf { it.qty }
-        builder.addTwoColumnRtlRow("عدد المنتجات / TOTAL ITEMS", "$totalQty", sizePx = 24f, bold = true)
+        builder.addTwoColumnRtlRow("عدد المنتجات / TOTAL ITEMS", "$totalQty", sizePx = 30f, bold = true)
         builder.addSpacer(20)
         return builder.build()
     }
@@ -393,64 +393,64 @@ object ThermalReceiptRasterizer {
         val variancePrefix = if (shift.variance >= 0.0) "+" else ""
 
         builder.addSpacer(12)
-        builder.addCenteredText("ملخص إغلاق الوردية • Z-REPORT", sizePx = 26f, bold = true, rtl = true)
-        builder.addCenteredText(settings.shopNameAr.ifBlank { settings.shopNameEn }, sizePx = 30f, bold = true, rtl = true)
+        builder.addCenteredText("ملخص إغلاق الوردية • Z-REPORT", sizePx = 32f, bold = true, rtl = true)
+        builder.addCenteredText(settings.shopNameAr.ifBlank { settings.shopNameEn }, sizePx = 38f, bold = true, rtl = true)
         if (settings.shopNameEn.isNotBlank() && settings.shopNameEn != settings.shopNameAr) {
-            builder.addCenteredText(settings.shopNameEn, sizePx = 22f, bold = true, rtl = false)
+            builder.addCenteredText(settings.shopNameEn, sizePx = 28f, bold = true, rtl = false)
         }
         if (settings.addressAr.isNotBlank()) {
-            builder.addCenteredText(settings.addressAr, sizePx = 19f, bold = false, rtl = true)
+            builder.addCenteredText(settings.addressAr, sizePx = 25f, bold = false, rtl = true)
         }
         if (settings.addressEn.isNotBlank() && settings.addressEn != settings.addressAr) {
-            builder.addCenteredText(settings.addressEn, sizePx = 18f, bold = false, rtl = false)
+            builder.addCenteredText(settings.addressEn, sizePx = 23f, bold = false, rtl = false)
         }
         if (settings.vatNumber.isNotBlank()) {
-            builder.addCenteredText("الرقم الضريبي: ${settings.vatNumber}", sizePx = 20f, bold = true, rtl = true)
+            builder.addCenteredText("الرقم الضريبي: ${settings.vatNumber}", sizePx = 25f, bold = true, rtl = true)
         }
         builder.addDivider(thicknessPx = 2f)
 
-        builder.addTwoColumnRtlRow("الكاشير / Cashier", shift.cashierName, sizePx = 21f, bold = true)
-        builder.addTwoColumnRtlRow("بداية الوردية / Opened", formatReceiptTimestamp(shift.openedAt), sizePx = 19f, bold = false)
-        builder.addTwoColumnRtlRow("إغلاق الوردية / Closed", formatReceiptTimestamp(closedTime), sizePx = 19f, bold = false)
+        builder.addTwoColumnRtlRow("الكاشير / Cashier", shift.cashierName, sizePx = 26f, bold = true)
+        builder.addTwoColumnRtlRow("بداية الوردية / Opened", formatReceiptTimestamp(shift.openedAt), sizePx = 24f, bold = false)
+        builder.addTwoColumnRtlRow("إغلاق الوردية / Closed", formatReceiptTimestamp(closedTime), sizePx = 24f, bold = false)
         builder.addDivider(thicknessPx = 2f)
 
-        builder.addCenteredText("ملخص المبيعات • SALES SUMMARY", sizePx = 21f, bold = true, rtl = true)
-        builder.addTwoColumnRtlRow("عدد الطلبات / Orders", "${metrics.orderCount}", sizePx = 20f, bold = false)
-        builder.addTwoColumnRtlRow("إجمالي المبيعات / Gross Sales", "${formatNumber(metrics.grossSales)} SAR", sizePx = 20f, bold = false)
+        builder.addCenteredText("ملخص المبيعات • SALES SUMMARY", sizePx = 26f, bold = true, rtl = true)
+        builder.addTwoColumnRtlRow("عدد الطلبات / Orders", "${metrics.orderCount}", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("إجمالي المبيعات / Gross Sales", "${formatNumber(metrics.grossSales)} SAR", sizePx = 25f, bold = false)
         if (metrics.totalDiscounts > 0.001) {
-            builder.addTwoColumnRtlRow("الخصومات / Discounts", "-${formatNumber(metrics.totalDiscounts)} SAR", sizePx = 20f, bold = false)
+            builder.addTwoColumnRtlRow("الخصومات / Discounts", "-${formatNumber(metrics.totalDiscounts)} SAR", sizePx = 25f, bold = false)
         }
-        builder.addTwoColumnRtlRow("ضريبة ١٥٪ / VAT 15%", "${formatNumber(metrics.totalVat)} SAR", sizePx = 20f, bold = false)
+        builder.addTwoColumnRtlRow("ضريبة ١٥٪ / VAT 15%", "${formatNumber(metrics.totalVat)} SAR", sizePx = 25f, bold = false)
         if (metrics.totalRefunds > 0.001) {
-            builder.addTwoColumnRtlRow("المرتجعات / Refunds", "-${formatNumber(metrics.totalRefunds)} SAR", sizePx = 20f, bold = false)
+            builder.addTwoColumnRtlRow("المرتجعات / Refunds", "-${formatNumber(metrics.totalRefunds)} SAR", sizePx = 25f, bold = false)
         }
-        builder.addTwoColumnRtlRow("صافي المبيعات / Net Sales", "${formatNumber(metrics.netSales)} SAR", sizePx = 23f, bold = true)
+        builder.addTwoColumnRtlRow("صافي المبيعات / Net Sales", "${formatNumber(metrics.netSales)} SAR", sizePx = 29f, bold = true)
         builder.addDivider(thicknessPx = 2f)
 
-        builder.addCenteredText("تفصيل المدفوعات • PAYMENT CHANNELS", sizePx = 21f, bold = true, rtl = true)
-        builder.addTwoColumnRtlRow("نقدي / Cash Sales", "${formatNumber(metrics.cashSales)} SAR", sizePx = 20f, bold = false)
-        builder.addTwoColumnRtlRow("مدى / Mada Sales", "${formatNumber(metrics.madaSales)} SAR", sizePx = 20f, bold = false)
-        builder.addTwoColumnRtlRow("فيزا / Visa Sales", "${formatNumber(metrics.visaSales)} SAR", sizePx = 20f, bold = false)
-        builder.addTwoColumnRtlRow("التطبيقات / Delivery Apps", "${formatNumber(metrics.onlineSales)} SAR", sizePx = 20f, bold = false)
+        builder.addCenteredText("تفصيل المدفوعات • PAYMENT CHANNELS", sizePx = 26f, bold = true, rtl = true)
+        builder.addTwoColumnRtlRow("نقدي / Cash Sales", "${formatNumber(metrics.cashSales)} SAR", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("مدى / Mada Sales", "${formatNumber(metrics.madaSales)} SAR", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("فيزا / Visa Sales", "${formatNumber(metrics.visaSales)} SAR", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("التطبيقات / Delivery Apps", "${formatNumber(metrics.onlineSales)} SAR", sizePx = 25f, bold = false)
         if (metrics.dueSales > 0.001) {
-            builder.addTwoColumnRtlRow("آجل / Credit Due", "${formatNumber(metrics.dueSales)} SAR", sizePx = 20f, bold = false)
+            builder.addTwoColumnRtlRow("آجل / Credit Due", "${formatNumber(metrics.dueSales)} SAR", sizePx = 25f, bold = false)
         }
         builder.addDivider(thicknessPx = 2f)
 
-        builder.addCenteredText("مطابقة الصندوق • CASH DRAWER", sizePx = 21f, bold = true, rtl = true)
-        builder.addTwoColumnRtlRow("العهدة الافتتاحية / Opening Float", "${formatNumber(metrics.openingFloat)} SAR", sizePx = 20f, bold = false)
-        builder.addTwoColumnRtlRow("مبيعات النقد / Cash Sales", "+${formatNumber(metrics.cashSales)} SAR", sizePx = 20f, bold = false)
+        builder.addCenteredText("مطابقة الصندوق • CASH DRAWER", sizePx = 26f, bold = true, rtl = true)
+        builder.addTwoColumnRtlRow("العهدة الافتتاحية / Opening Float", "${formatNumber(metrics.openingFloat)} SAR", sizePx = 25f, bold = false)
+        builder.addTwoColumnRtlRow("مبيعات النقد / Cash Sales", "+${formatNumber(metrics.cashSales)} SAR", sizePx = 25f, bold = false)
         if (metrics.cashRefunds > 0.001) {
-            builder.addTwoColumnRtlRow("مرتجعات النقد / Cash Refunds", "-${formatNumber(metrics.cashRefunds)} SAR", sizePx = 20f, bold = false)
+            builder.addTwoColumnRtlRow("مرتجعات النقد / Cash Refunds", "-${formatNumber(metrics.cashRefunds)} SAR", sizePx = 25f, bold = false)
         }
-        builder.addTwoColumnRtlRow("النقد المتوقع / Expected Cash", "${formatNumber(shift.expectedCash)} SAR", sizePx = 21f, bold = false)
-        builder.addTwoColumnRtlRow("النقد المعدود / Counted Cash", "${formatNumber(shift.countedCash)} SAR", sizePx = 22f, bold = true)
-        builder.addTwoColumnRtlRow("العجز أو الزيادة / Variance", "$variancePrefix${formatNumber(shift.variance)} SAR", sizePx = 23f, bold = true)
+        builder.addTwoColumnRtlRow("النقد المتوقع / Expected Cash", "${formatNumber(shift.expectedCash)} SAR", sizePx = 26f, bold = false)
+        builder.addTwoColumnRtlRow("النقد المعدود / Counted Cash", "${formatNumber(shift.countedCash)} SAR", sizePx = 27f, bold = true)
+        builder.addTwoColumnRtlRow("العجز أو الزيادة / Variance", "$variancePrefix${formatNumber(shift.variance)} SAR", sizePx = 29f, bold = true)
 
         builder.addDivider(thicknessPx = 2f)
-        builder.addCenteredText("******", sizePx = 21f, bold = true, rtl = false)
+        builder.addCenteredText("******", sizePx = 26f, bold = true, rtl = false)
         if (settings.phone.isNotBlank()) {
-            builder.addCenteredText(settings.phone, sizePx = 20f, bold = false, rtl = false)
+            builder.addCenteredText(settings.phone, sizePx = 25f, bold = false, rtl = false)
         }
         builder.addSpacer(20)
         return builder.build()
@@ -567,7 +567,7 @@ object ThermalReceiptRasterizer {
             bold: Boolean
         ) {
             val gap = 12
-            val leftColWidth = 196
+            val leftColWidth = 210
             val rightColWidth = CONTENT_WIDTH_PX - leftColWidth - gap
             val paint = makePaint(sizePx, bold)
 
@@ -585,11 +585,11 @@ object ThermalReceiptRasterizer {
             leftAmount: String
         ) {
             val gap = 12
-            val leftColWidth = 152
+            val leftColWidth = 184
             val rightColWidth = CONTENT_WIDTH_PX - leftColWidth - gap
 
-            val amountPaint = makePaint(21f, bold = true)
-            val namePaint = makePaint(22f, bold = true)
+            val amountPaint = makePaint(27f, bold = true)
+            val namePaint = makePaint(28f, bold = true)
             val leftLayout = createLayout(leftAmount, amountPaint, leftColWidth, Layout.Alignment.ALIGN_NORMAL, rtl = false)
             val rightLayout = createLayout(rightPrimary, namePaint, rightColWidth, Layout.Alignment.ALIGN_NORMAL, rtl = true)
             val rightStartX = (MARGIN_X + leftColWidth + gap).toFloat()
@@ -598,7 +598,7 @@ object ThermalReceiptRasterizer {
             totalHeight += mainOp.height
 
             if (rightSecondary.isNotBlank()) {
-                val subPaint = makePaint(19f, bold = false)
+                val subPaint = makePaint(25f, bold = true)
                 val subLayout = createLayout(rightSecondary, subPaint, rightColWidth, Layout.Alignment.ALIGN_OPPOSITE, rtl = false)
                 val subOp = DrawOp.SingleLayout(subLayout, rightStartX, padTop = 0, padBottom = 5)
                 ops.add(subOp)

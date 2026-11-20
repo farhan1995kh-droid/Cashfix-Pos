@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -46,6 +48,7 @@ import com.example.ui.theme.StatusSuccess
 import java.io.File
 import java.util.UUID
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerQrOrderScreen(
     lang: AppLang,
@@ -53,6 +56,7 @@ fun CustomerQrOrderScreen(
     categories: List<Category>,
     products: List<Product>,
     productOffers: List<ProductOffer>,
+    initialTableCode: String = "T2",
     onToggleLang: () -> Unit,
     onExitToPos: () -> Unit,
     onSubmitQrOrder: (items: List<CartItem>, tableOrCar: String, customerName: String, customerPhone: String, notes: String) -> Unit
@@ -62,13 +66,18 @@ fun CustomerQrOrderScreen(
 
     var selectedTopCatId by remember { mutableStateOf<String?>(null) }
     var selectedSubCatId by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
     var customerName by remember { mutableStateOf("") }
-    var tableOrCar by remember { mutableStateOf("") }
+    var tableOrCar by remember(initialTableCode) { mutableStateOf(initialTableCode) }
     var customerPhone by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var qrCart by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     var orderSentBanner by remember { mutableStateOf(false) }
     var pendingOfferProduct by remember { mutableStateOf<Pair<Product, ProductOffer>?>(null) }
+    var showCartSummarySheet by remember { mutableStateOf(false) }
+
+    // Deduplicate available products so identical items never repeat
+    val availableProducts = remember(products) { products.deduplicatedAvailable() }
 
     val topCategories = remember(categories) {
         categories.filter { it.parentCategoryId == null }.sortedBy { it.sortOrder }
@@ -77,16 +86,28 @@ fun CustomerQrOrderScreen(
         if (selectedTopCatId == null) emptyList()
         else categories.filter { it.parentCategoryId == selectedTopCatId }.sortedBy { it.sortOrder }
     }
-    val activeOfferProductIds = remember(products, productOffers) {
-        products.filter { productOffers.activeOfferFor(it) != null }.map { it.id }.toSet()
+    val activeOfferProductIds = remember(availableProducts, productOffers) {
+        availableProducts.filter { productOffers.activeOfferFor(it) != null }.map { it.id }.toSet()
     }
 
-    // Group visible categories cleanly for Menu Bar + Section Headers
+    // Count items per top category (including its sub-categories)
+    val topCategoryCounts = remember(availableProducts, categories, topCategories) {
+        topCategories.associate { top ->
+            val familyIds = setOf(top.id) + categories.filter { it.parentCategoryId == top.id }.map { it.id }
+            top.id to availableProducts.count { it.categoryId in familyIds }
+        }
+    }
+
+    // Group visible categories cleanly matching the main POS dashboard
     val visibleSections: List<Pair<Category, List<Product>>> = remember(
-        products, categories, selectedTopCatId, selectedSubCatId
+        availableProducts, categories, selectedTopCatId, selectedSubCatId, searchQuery
     ) {
-        val availableProducts = products.filter { it.isAvailable }
+        val q = searchQuery.trim().lowercase()
         val catsToDisplay = when {
+            q.isNotEmpty() -> topCategories.flatMap { top ->
+                val children = categories.filter { it.parentCategoryId == top.id }.sortedBy { it.sortOrder }
+                listOf(top) + children
+            }
             selectedSubCatId != null -> categories.filter { it.id == selectedSubCatId }
             selectedTopCatId != null -> {
                 val parent = categories.filter { it.id == selectedTopCatId }
@@ -101,12 +122,19 @@ fun CustomerQrOrderScreen(
             }
         }
         catsToDisplay.mapNotNull { cat ->
-            val items = availableProducts.filter { it.categoryId == cat.id }
+            val items = availableProducts.filter { p ->
+                p.categoryId == cat.id && (
+                    q.isEmpty() ||
+                        p.nameEn.lowercase().contains(q) ||
+                        p.nameAr.contains(q)
+                )
+            }
             if (items.isEmpty()) null else cat to items
         }
     }
 
     val total = qrCart.sumOf { it.unitPrice * it.qty }
+    val vatIncludedAmount = if (settings.vatInclusive) total - (total / (1.0 + settings.vatRate)) else total * settings.vatRate
     val canSubmit = qrCart.isNotEmpty() && customerName.isNotBlank()
 
     fun incrementProduct(product: Product) {
@@ -148,42 +176,102 @@ fun CustomerQrOrderScreen(
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        val bannerHeight = if (maxHeight < 650.dp) 96.dp else 132.dp
+        val isWide = maxWidth >= 640.dp
+        val gridColumns = if (isWide) GridCells.Fixed(2) else GridCells.Fixed(1)
+
         Column(modifier = Modifier.fillMaxSize()) {
-            // Banner Header
-            Box(modifier = Modifier.height(bannerHeight).fillMaxWidth()) {
-                Image(
-                    painter = painterResource(id = R.drawable.img_qr_menu_banner),
-                    contentDescription = s.customerMenuTitle,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Brush.verticalGradient(listOf(Color.Black.copy(0.25f), Color.Black.copy(0.80f))))
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(settings.shopDisplayName(lang), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(s.customerMenuTitle, color = Color(0xFF93C5FD), style = MaterialTheme.typography.labelLarge)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilledTonalButton(onClick = onToggleLang) {
-                            Text(if (lang == AppLang.EN) "عربي" else "EN")
+            // Top Brand Bar matching Main POS Dashboard (White base + Royal Blue accents + Table Badge)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.cashfix_brand_logo),
+                                    contentDescription = settings.shopDisplayName(lang),
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = settings.shopDisplayName(lang),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (tableOrCar.isNotBlank()) {
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = BluePrimary,
+                                            modifier = Modifier.testTag("qr_table_badge")
+                                        ) {
+                                            Text(
+                                                text = if (lang == AppLang.AR) "طاولة: ${tableOrCar.trim()}" else "Table: ${tableOrCar.trim()}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = "${settings.addressDisplay(lang)} • ${s.customerMenuTitle}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
-                        FilledTonalButton(onClick = onExitToPos, modifier = Modifier.testTag("qr_exit_to_pos_btn")) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(s.backToPos)
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(
+                                onClick = onToggleLang,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (lang == AppLang.EN) "العربية" else "EN", fontWeight = FontWeight.Bold)
+                            }
+                            FilledTonalButton(
+                                onClick = onExitToPos,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier.testTag("qr_exit_to_pos_btn")
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(s.backToPos, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 }
             }
 
@@ -195,7 +283,8 @@ fun CustomerQrOrderScreen(
             ) {
                 if (orderSentBanner) {
                     Surface(
-                        color = StatusSuccess.copy(alpha = 0.16f),
+                        color = StatusSuccess.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.4f)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -206,7 +295,7 @@ fun CustomerQrOrderScreen(
                     }
                 }
 
-                // Customer Details Card: Name Mandatory, Table/Car & Mobile Optional
+                // Customer Details Card: Name Mandatory, Table Badge / Car & Mobile Optional
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -217,34 +306,58 @@ fun CustomerQrOrderScreen(
                         modifier = Modifier.padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (isWide) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = customerName,
+                                    onValueChange = { customerName = it },
+                                    label = { Text(s.customerNameRequired) },
+                                    isError = qrCart.isNotEmpty() && customerName.isBlank(),
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1.3f).testTag("qr_customer_name_input")
+                                )
+                                OutlinedTextField(
+                                    value = tableOrCar,
+                                    onValueChange = { tableOrCar = it },
+                                    label = { Text("${s.tableOrCar} (${s.optionalLabel})") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(0.9f)
+                                )
+                                OutlinedTextField(
+                                    value = customerPhone,
+                                    onValueChange = { customerPhone = it },
+                                    label = { Text("${s.customerPhone} (${s.optionalLabel})") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f).testTag("qr_customer_phone_input")
+                                )
+                            }
+                        } else {
                             OutlinedTextField(
                                 value = customerName,
                                 onValueChange = { customerName = it },
                                 label = { Text(s.customerNameRequired) },
                                 isError = qrCart.isNotEmpty() && customerName.isBlank(),
                                 singleLine = true,
-                                modifier = Modifier
-                                    .weight(1.2f)
-                                    .testTag("qr_customer_name_input")
+                                modifier = Modifier.fillMaxWidth().testTag("qr_customer_name_input")
                             )
-                            OutlinedTextField(
-                                value = tableOrCar,
-                                onValueChange = { tableOrCar = it },
-                                label = { Text("${s.tableOrCar} (${s.optionalLabel})") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = customerPhone,
-                                onValueChange = { customerPhone = it },
-                                label = { Text("${s.customerPhone} (${s.optionalLabel})") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                singleLine = true,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("qr_customer_phone_input")
-                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = tableOrCar,
+                                    onValueChange = { tableOrCar = it },
+                                    label = { Text("${s.tableOrCar} (${s.optionalLabel})") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = customerPhone,
+                                    onValueChange = { customerPhone = it },
+                                    label = { Text("${s.customerPhone} (${s.optionalLabel})") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f).testTag("qr_customer_phone_input")
+                                )
+                            }
                         }
                         if (qrCart.isNotEmpty() && customerName.isBlank()) {
                             Text(
@@ -257,7 +370,32 @@ fun CustomerQrOrderScreen(
                     }
                 }
 
-                // Organized Menu Bar (Top-Level Category Tabs)
+                // Search Bar + Filterable Category Tabs (Matching Main POS Dashboard)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            text = if (lang == AppLang.AR) "ابحث في القائمة (برجر، وجبات، مشروبات...)" else "Search burgers, meals, sides, drinks...",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = s.clear)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("qr_menu_search_input")
+                )
+
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.surface,
@@ -274,18 +412,21 @@ fun CustomerQrOrderScreen(
                                         selectedSubCatId = null
                                     },
                                     leadingIcon = { Icon(Icons.Default.RestaurantMenu, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                                    label = { Text(s.allCategories, fontWeight = FontWeight.Bold) }
+                                    label = { Text("${s.allCategories} (${availableProducts.size})", fontWeight = FontWeight.Bold) }
                                 )
                             }
                             items(topCategories, key = { it.id }) { cat ->
-                                FilterChip(
-                                    selected = selectedTopCatId == cat.id,
-                                    onClick = {
-                                        selectedTopCatId = cat.id
-                                        selectedSubCatId = null
-                                    },
-                                    label = { Text(cat.displayName(lang), fontWeight = FontWeight.SemiBold) }
-                                )
+                                val count = topCategoryCounts[cat.id] ?: 0
+                                if (count > 0) {
+                                    FilterChip(
+                                        selected = selectedTopCatId == cat.id,
+                                        onClick = {
+                                            selectedTopCatId = cat.id
+                                            selectedSubCatId = null
+                                        },
+                                        label = { Text("${cat.displayName(lang)} ($count)", fontWeight = FontWeight.SemiBold) }
+                                    )
+                                }
                             }
                         }
                         if (subCategoriesForSelected.isNotEmpty()) {
@@ -315,13 +456,37 @@ fun CustomerQrOrderScreen(
                     }
                 }
 
-                // Organized Menu Grid Grouped by Category Section Headers
+                // Organized Menu Grid Grouped by Category Section Headers (2-col on tablet/desktop, structured horizontal cards on mobile)
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 165.dp),
+                    columns = gridColumns,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
+                    if (visibleSections.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Default.SearchOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(32.dp))
+                                    Text(
+                                        text = if (lang == AppLang.AR) "لا توجد أصناف مطابقة للبحث" else "No menu items match your search",
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     visibleSections.forEach { (category, sectionProducts) ->
                         item(
                             key = "header_${category.id}",
@@ -340,11 +505,11 @@ fun CustomerQrOrderScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(
                                         modifier = Modifier
                                             .width(4.dp)
-                                            .height(18.dp)
+                                            .height(20.dp)
                                             .clip(RoundedCornerShape(2.dp))
                                             .background(BluePrimary)
                                     )
@@ -364,7 +529,7 @@ fun CustomerQrOrderScreen(
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                     )
                                 }
                             }
@@ -381,59 +546,90 @@ fun CustomerQrOrderScreen(
                                     width = if (qtyInCart > 0) 1.5.dp else 1.dp,
                                     color = if (qtyInCart > 0) BluePrimary else MaterialTheme.colorScheme.outline
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (qtyInCart > 0) 3.dp else 1.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("qr_menu_product_${product.id}")
                             ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(IntrinsicSize.Min),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     if (product.imageUri.isNotBlank()) {
                                         AsyncImage(
                                             model = File(product.imageUri).takeIf { it.exists() } ?: product.imageUri,
                                             contentDescription = product.displayName(lang),
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(102.dp)
+                                                .width(96.dp)
+                                                .fillMaxHeight()
+                                                .heightIn(min = 96.dp)
                                         )
                                     } else {
                                         Box(
                                             modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(54.dp)
+                                                .width(84.dp)
+                                                .fillMaxHeight()
+                                                .heightIn(min = 92.dp)
                                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Fastfood,
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                                                modifier = Modifier.size(26.dp)
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                                modifier = Modifier.size(28.dp)
                                             )
                                         }
                                     }
 
                                     Column(
-                                        modifier = Modifier.padding(10.dp),
-                                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Text(
-                                            text = product.displayName(lang),
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.heightIn(min = 38.dp)
-                                        )
-                                        if (lang == AppLang.EN && product.nameAr.isNotBlank()) {
-                                            Text(
-                                                text = product.nameAr,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = product.displayName(lang),
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                if (lang == AppLang.EN && product.nameAr.isNotBlank()) {
+                                                    Text(
+                                                        text = product.nameAr,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                            if (hasOffer) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = StatusSuccess.copy(alpha = 0.14f)
+                                                ) {
+                                                    Text(
+                                                        text = if (lang == AppLang.AR) "عرض" else "OFFER",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = StatusSuccess,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
                                         }
+
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -442,21 +638,22 @@ fun CustomerQrOrderScreen(
                                             Text(
                                                 text = formatSar(product.offlinePrice, lang),
                                                 color = MaterialTheme.colorScheme.primary,
+                                                style = MaterialTheme.typography.titleSmall,
                                                 fontWeight = FontWeight.ExtraBold
                                             )
                                             if (qtyInCart > 0) {
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                                 ) {
                                                     Surface(
                                                         onClick = { decrementProduct(product) },
                                                         shape = CircleShape,
                                                         color = MaterialTheme.colorScheme.surfaceVariant,
-                                                        modifier = Modifier.size(26.dp)
+                                                        modifier = Modifier.size(30.dp)
                                                     ) {
                                                         Box(contentAlignment = Alignment.Center) {
-                                                            Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(14.dp))
+                                                            Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(16.dp))
                                                         }
                                                     }
                                                     Text("$qtyInCart", fontWeight = FontWeight.ExtraBold)
@@ -464,24 +661,28 @@ fun CustomerQrOrderScreen(
                                                         onClick = { incrementProduct(product) },
                                                         shape = CircleShape,
                                                         color = BluePrimary,
-                                                        modifier = Modifier.size(26.dp)
+                                                        modifier = Modifier.size(30.dp)
                                                     ) {
                                                         Box(contentAlignment = Alignment.Center) {
-                                                            Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(14.dp))
+                                                            Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
                                                         }
                                                     }
                                                 }
-                                            } else if (hasOffer) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    color = StatusSuccess.copy(alpha = 0.14f)
+                                            } else {
+                                                FilledTonalButton(
+                                                    onClick = { incrementProduct(product) },
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                                        containerColor = BluePrimary,
+                                                        contentColor = Color.White
+                                                    ),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                    modifier = Modifier.height(34.dp)
                                                 ) {
                                                     Text(
-                                                        text = "OFFER",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = StatusSuccess,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        text = if (lang == AppLang.AR) "+ أضف" else "+ Add",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        fontWeight = FontWeight.Bold
                                                     )
                                                 }
                                             }
@@ -494,8 +695,12 @@ fun CustomerQrOrderScreen(
                 }
             }
 
-            // Submit Bar
-            Surface(tonalElevation = 6.dp, shadowElevation = 8.dp) {
+            // Smooth Cart Summary & Checkout Bar
+            Surface(
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surface
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -503,12 +708,30 @@ fun CustomerQrOrderScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("${qrCart.sumOf { it.qty }} ${s.itemsCountLabel}", style = MaterialTheme.typography.labelMedium)
-                        Text(formatSar(total, lang), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        onClick = { if (qrCart.isNotEmpty()) showCartSummarySheet = true },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                            Text(
+                                text = "${qrCart.sumOf { it.qty }} ${s.itemsCountLabel} • ${if (lang == AppLang.AR) "شامل ١٥٪ ضريبة" else "Incl. 15% VAT"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatSar(total, lang),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     Button(
                         enabled = canSubmit,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .height(52.dp)
                             .testTag("qr_submit_order_btn"),
@@ -522,6 +745,49 @@ fun CustomerQrOrderScreen(
                         Spacer(Modifier.width(6.dp))
                         Text(s.submitQrOrder, fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+
+        if (showCartSummarySheet) {
+            ModalBottomSheet(onDismissRequest = { showCartSummarySheet = false }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = if (lang == AppLang.AR) "ملخص طلبك" else "Order Cart Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    qrCart.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("${item.qty}x ${item.displayName(lang)}", fontWeight = FontWeight.SemiBold)
+                                if (item.note.isNotBlank()) {
+                                    Text(item.note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Text(formatSar(item.lineTotal, lang), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(s.vat15, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatSar(vatIncludedAmount, lang), fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(s.grandTotal, fontWeight = FontWeight.ExtraBold)
+                        Text(formatSar(total, lang), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(Modifier.height(12.dp))
                 }
             }
         }

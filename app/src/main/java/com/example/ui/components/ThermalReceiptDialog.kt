@@ -286,8 +286,8 @@ private fun CustomerBillPaperCard(
                     text = settings.shopNameAr.ifBlank { settings.shopNameEn },
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 23.sp,
-                    lineHeight = 28.sp,
+                    fontSize = 27.sp,
+                    lineHeight = 33.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -296,7 +296,7 @@ private fun CustomerBillPaperCard(
                         text = settings.shopNameEn,
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 17.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.Center
                     )
@@ -308,8 +308,8 @@ private fun CustomerBillPaperCard(
                         text = settings.addressAr,
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Normal,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 14.5.sp,
+                        lineHeight = 19.sp,
                         color = ReceiptMuted,
                         textAlign = TextAlign.Center
                     )
@@ -319,8 +319,8 @@ private fun CustomerBillPaperCard(
                         text = settings.addressEn,
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Normal,
-                        fontSize = 11.5.sp,
-                        lineHeight = 15.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
                         color = ReceiptMuted,
                         textAlign = TextAlign.Center
                     )
@@ -329,8 +329,8 @@ private fun CustomerBillPaperCard(
                     Text(
                         text = "الرقم الضريبي: ${settings.vatNumber}",
                         fontFamily = CairoFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.Center
                     )
@@ -341,7 +341,7 @@ private fun CustomerBillPaperCard(
                     text = "رقم الفاتورة : ${order.orderNumber}",
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontSize = 16.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -349,7 +349,7 @@ private fun CustomerBillPaperCard(
                     text = formattedDate,
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Normal,
-                    fontSize = 11.5.sp,
+                    fontSize = 14.sp,
                     color = ReceiptMuted,
                     textAlign = TextAlign.Center
                 )
@@ -362,7 +362,7 @@ private fun CustomerBillPaperCard(
                     text = orderTypeText,
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
+                    fontSize = 16.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -376,7 +376,7 @@ private fun CustomerBillPaperCard(
                         text = customerLine,
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 11.5.sp,
+                        fontSize = 14.sp,
                         color = ReceiptMuted,
                         textAlign = TextAlign.Center
                     )
@@ -396,7 +396,7 @@ private fun CustomerBillPaperCard(
                         text = "مبلغ / Amount",
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
+                        fontSize = 14.5.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.Start
                     )
@@ -404,7 +404,7 @@ private fun CustomerBillPaperCard(
                         text = "منتج / Product",
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
+                        fontSize = 14.5.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.End
                     )
@@ -412,7 +412,7 @@ private fun CustomerBillPaperCard(
 
                 HorizontalDivider(color = ReceiptRuleDark, thickness = 1.dp)
 
-                // 6. Two-Column Items Rows: LEFT = SAR Amount, RIGHT = Bilingual Name + Qty
+                // 6. Two-Column Items Rows: LEFT = SAR Amount (Bold), RIGHT = Bilingual Name + Qty (Bold)
                 order.items.forEachIndexed { index, item ->
                     Row(
                         modifier = Modifier
@@ -425,7 +425,7 @@ private fun CustomerBillPaperCard(
                             text = "${formatNumber(item.lineTotal)} SAR",
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.5.sp,
+                            fontSize = 15.5.sp,
                             color = ReceiptInk,
                             textAlign = TextAlign.Start
                         )
@@ -438,8 +438,8 @@ private fun CustomerBillPaperCard(
                                 text = "${item.qty} × ${item.nameAr.ifBlank { item.nameEn }}",
                                 fontFamily = CairoFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                lineHeight = 17.sp,
+                                fontSize = 16.sp,
+                                lineHeight = 21.sp,
                                 color = ReceiptInk,
                                 textAlign = TextAlign.End
                             )
@@ -447,10 +447,10 @@ private fun CustomerBillPaperCard(
                                 Text(
                                     text = item.nameEn,
                                     fontFamily = CairoFontFamily,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 15.sp,
-                                    color = ReceiptMuted,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.5.sp,
+                                    lineHeight = 19.sp,
+                                    color = ReceiptInk,
                                     textAlign = TextAlign.End
                                 )
                             }
@@ -458,8 +458,8 @@ private fun CustomerBillPaperCard(
                                 Text(
                                     text = "* ${item.note}",
                                     fontFamily = CairoFontFamily,
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp,
                                     color = Color(0xFFB91C1C),
                                     textAlign = TextAlign.End
                                 )
@@ -478,7 +478,7 @@ private fun CustomerBillPaperCard(
                     text = "عدد المنتجات : $totalItemQty",
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.5.sp,
+                    fontSize = 15.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(vertical = 2.dp)
@@ -547,8 +547,8 @@ private fun CustomerBillPaperCard(
                 Text(
                     text = "تمت خدمتك من قبل: ${order.cashierName}",
                     fontFamily = CairoFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.5.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -556,7 +556,7 @@ private fun CustomerBillPaperCard(
                     text = "******",
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+                    fontSize = 14.5.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -564,8 +564,8 @@ private fun CustomerBillPaperCard(
                     Text(
                         text = settings.receiptFooterAr,
                         fontFamily = CairoFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.Center
                     )
@@ -575,7 +575,7 @@ private fun CustomerBillPaperCard(
                         text = settings.receiptFooterEn,
                         fontFamily = CairoFontFamily,
                         fontWeight = FontWeight.Normal,
-                        fontSize = 11.sp,
+                        fontSize = 13.5.sp,
                         color = ReceiptMuted,
                         textAlign = TextAlign.Center
                     )
@@ -583,8 +583,8 @@ private fun CustomerBillPaperCard(
                 Text(
                     text = settings.shopNameAr.ifBlank { settings.shopNameEn },
                     fontFamily = CairoFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -592,8 +592,8 @@ private fun CustomerBillPaperCard(
                     Text(
                         text = settings.phone,
                         fontFamily = CairoFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp,
                         color = ReceiptInk,
                         textAlign = TextAlign.Center
                     )
@@ -617,9 +617,9 @@ private fun CustomerBillPaperCard(
                             text = s.scanMenuNextTimeAr,
                             fontFamily = CairoFontFamily,
                             color = ReceiptInk,
-                            fontSize = 10.5.sp,
-                            lineHeight = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
                         if (menuQrBitmap != null) {
@@ -636,7 +636,7 @@ private fun CustomerBillPaperCard(
                             text = s.scanMenuNextTimeEn,
                             fontFamily = CairoFontFamily,
                             color = ReceiptMuted,
-                            fontSize = 10.sp,
+                            fontSize = 12.5.sp,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -676,7 +676,7 @@ private fun RestaurantCopyPaperCard(
                         text = s.restaurantCopy,
                         fontFamily = CairoFontFamily,
                         color = Color.White,
-                        fontSize = 11.5.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -686,7 +686,7 @@ private fun RestaurantCopyPaperCard(
                     text = settings.shopNameAr.ifBlank { settings.shopNameEn },
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 19.5.sp,
                     color = ReceiptInk,
                     textAlign = TextAlign.Center
                 )
@@ -694,7 +694,7 @@ private fun RestaurantCopyPaperCard(
                     text = formattedDate,
                     fontFamily = CairoFontFamily,
                     fontWeight = FontWeight.Normal,
-                    fontSize = 11.5.sp,
+                    fontSize = 14.sp,
                     color = ReceiptMuted,
                     textAlign = TextAlign.Center
                 )
@@ -724,7 +724,7 @@ private fun RestaurantCopyPaperCard(
                             text = "NOTE: ${order.notes}",
                             fontFamily = CairoFontFamily,
                             color = Color(0xFFB91C1C),
-                            fontSize = 12.sp,
+                            fontSize = 14.5.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -745,7 +745,7 @@ private fun RestaurantCopyPaperCard(
                             text = "[ ${item.qty}x ]  ${item.nameAr.ifBlank { item.nameEn }}",
                             fontFamily = CairoFontFamily,
                             color = ReceiptInk,
-                            fontSize = 14.5.sp,
+                            fontSize = 17.5.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.End
                         )
@@ -753,9 +753,9 @@ private fun RestaurantCopyPaperCard(
                             Text(
                                 text = item.nameEn,
                                 fontFamily = CairoFontFamily,
-                                color = ReceiptMuted,
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Medium,
+                                color = ReceiptInk,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.End
                             )
                         }
@@ -764,8 +764,8 @@ private fun RestaurantCopyPaperCard(
                                 text = ">> ${item.note}",
                                 fontFamily = CairoFontFamily,
                                 color = Color(0xFFB91C1C),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.End
                             )
                         }
@@ -793,7 +793,7 @@ private fun RtlMemoSummaryRow(leftValue: String, rightLabel: String, bold: Boole
             text = leftValue,
             fontFamily = CairoFontFamily,
             color = ReceiptInk,
-            fontSize = if (bold) 14.5.sp else 12.5.sp,
+            fontSize = if (bold) 17.sp else 14.5.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
             textAlign = TextAlign.Start
         )
@@ -802,7 +802,7 @@ private fun RtlMemoSummaryRow(leftValue: String, rightLabel: String, bold: Boole
             text = rightLabel,
             fontFamily = CairoFontFamily,
             color = if (bold) ReceiptInk else ReceiptMuted,
-            fontSize = if (bold) 14.sp else 12.sp,
+            fontSize = if (bold) 16.5.sp else 14.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

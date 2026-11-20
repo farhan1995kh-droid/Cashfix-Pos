@@ -127,7 +127,7 @@ fun ShiftSummaryMemoDialog(
                                 text = "Z-REPORT • ملخص إغلاق الوردية",
                                 fontFamily = CairoFontFamily,
                                 color = Color.White,
-                                fontSize = 11.5.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -138,7 +138,7 @@ fun ShiftSummaryMemoDialog(
                             text = settings.shopNameAr.ifBlank { settings.shopNameEn },
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 21.sp,
+                            fontSize = 25.sp,
                             color = ShiftMemoInk,
                             textAlign = TextAlign.Center
                         )
@@ -146,8 +146,8 @@ fun ShiftSummaryMemoDialog(
                             Text(
                                 text = settings.shopNameEn,
                                 fontFamily = CairoFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
                                 color = ShiftMemoMuted,
                                 textAlign = TextAlign.Center
                             )
@@ -160,7 +160,7 @@ fun ShiftSummaryMemoDialog(
                                     .joinToString("\n"),
                                 fontFamily = CairoFontFamily,
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 11.5.sp,
+                                fontSize = 14.sp,
                                 color = ShiftMemoMuted,
                                 textAlign = TextAlign.Center
                             )
@@ -169,8 +169,8 @@ fun ShiftSummaryMemoDialog(
                             Text(
                                 text = "VAT #: ${settings.vatNumber}",
                                 fontFamily = CairoFontFamily,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
                                 color = ShiftMemoInk,
                                 textAlign = TextAlign.Center
                             )
@@ -188,7 +188,7 @@ fun ShiftSummaryMemoDialog(
                             text = "ملخص المبيعات • SALES SUMMARY",
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 14.5.sp,
                             color = ShiftMemoInk
                         )
 
@@ -208,7 +208,7 @@ fun ShiftSummaryMemoDialog(
                             text = "تفصيل المدفوعات • PAYMENT CHANNELS",
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 14.5.sp,
                             color = ShiftMemoInk
                         )
 
@@ -225,7 +225,7 @@ fun ShiftSummaryMemoDialog(
                             text = "مطابقة الصندوق • CASH DRAWER",
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 14.5.sp,
                             color = ShiftMemoInk
                         )
 
@@ -248,7 +248,7 @@ fun ShiftSummaryMemoDialog(
                             text = "******",
                             fontFamily = CairoFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             color = ShiftMemoInk
                         )
                         if (settings.phone.isNotBlank()) {
@@ -256,7 +256,7 @@ fun ShiftSummaryMemoDialog(
                                 text = settings.phone,
                                 fontFamily = CairoFontFamily,
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 11.5.sp,
+                                fontSize = 14.sp,
                                 color = ShiftMemoMuted
                             )
                         }
@@ -313,7 +313,7 @@ private fun ShiftMemoRow(
             text = label,
             fontFamily = CairoFontFamily,
             color = if (bold) ShiftMemoInk else ShiftMemoMuted,
-            fontSize = if (bold) 13.5.sp else 11.5.sp,
+            fontSize = if (bold) 16.sp else 13.5.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -324,7 +324,7 @@ private fun ShiftMemoRow(
             text = value,
             fontFamily = CairoFontFamily,
             color = valueColor,
-            fontSize = if (bold) 14.sp else 12.sp,
+            fontSize = if (bold) 16.5.sp else 14.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold
         )
     }

@@ -46,9 +46,8 @@ data class ShiftMemoState(
 )
 
 class PosViewModel(application: Application) : AndroidViewModel(application) {
+    private val appContext = application.applicationContext
     private val repo = PosRepository(application)
-    private val alarmPlayer = AlarmSoundPlayer(application)
-    private val qrGateway = QrSelfOrderGateway()
     private val receiptTypeface: Typeface? = runCatching {
         ResourcesCompat.getFont(application, R.font.cairo)
     }.getOrNull()
@@ -165,29 +164,26 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
-    // Incoming QR Order & 15-Second Alarm
+    // Incoming QR Order & 15-Second Alarm (shared with CashFixOrderAlertService for multi-app background alerts)
     val incomingQrOrders: StateFlow<List<PosOrder>> = orders.map { list ->
         list.filter { it.status == OrderStatus.INCOMING_QR }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _alarmSecondsRemaining = MutableStateFlow(0)
-    val alarmSecondsRemaining: StateFlow<Int> = _alarmSecondsRemaining.asStateFlow()
+    val alarmSecondsRemaining: StateFlow<Int> = QrOrderRuntimeHub.alarmSecondsRemaining
+    val backgroundAlertsActive: StateFlow<Boolean> = QrOrderRuntimeHub.isServiceRunning
+    val qrGatewayRunning: StateFlow<Boolean> = QrOrderRuntimeHub.isGatewayRunning
 
-    private val _lastAlarmOrderId = MutableStateFlow<String?>(null)
-
-    // Printer Scanner & LAN Gateway
+    // Printer Scanner
     private val _discoveredPrinters = MutableStateFlow<List<DiscoveredPrinter>>(emptyList())
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = _discoveredPrinters.asStateFlow()
 
     private val _isScanningPrinters = MutableStateFlow(false)
     val isScanningPrinters: StateFlow<Boolean> = _isScanningPrinters.asStateFlow()
 
-    private val _qrGatewayRunning = MutableStateFlow(false)
-    val qrGatewayRunning: StateFlow<Boolean> = _qrGatewayRunning.asStateFlow()
-
     val localDeviceIp: String get() = ZatcaQrAndEscPos.getLocalIpv4Address()
 
     init {
+        QrOrderRuntimeHub.ensureNotificationChannels(appContext)
         viewModelScope.launch {
             repo.seedInitialDataIfNeeded()
         }
@@ -207,34 +203,36 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
                 }
         }
         viewModelScope.launch {
-            combine(storeSettings, products) { settings, prods -> settings to prods }
-                .collect { (settings, prods) ->
-                    qrGateway.updateCatalogSnapshot(settings.shopNameEn, prods)
+            combine(storeSettings, categories, products, productOffers) { settings, cats, prods, offers ->
+                listOf(settings, cats, prods, offers)
+            }.collect { tuple ->
+                val settings = tuple[0] as StoreSettings
+                @Suppress("UNCHECKED_CAST")
+                val cats = tuple[1] as List<Category>
+                @Suppress("UNCHECKED_CAST")
+                val prods = tuple[2] as List<Product>
+                @Suppress("UNCHECKED_CAST")
+                val offers = tuple[3] as List<ProductOffer>
+                QrOrderRuntimeHub.updateCatalogSnapshot(settings, cats, prods, offers)
+                QrOrderRuntimeHub.ensureGatewayStarted(settings.qrServerPort)
+            }
+        }
+        viewModelScope.launch {
+            QrOrderRuntimeHub.qrGateway.incomingPayloads.collect { payload ->
+                // When Foreground Service is running, the service persists incoming payloads directly
+                // so orders are processed even when minimized; avoid double-saving here.
+                if (!QrOrderRuntimeHub.isServiceRunning.value) {
+                    submitIncomingQrPayload(payload)
                 }
-        }
-        viewModelScope.launch {
-            val started = qrGateway.start(storeSettings.value.qrServerPort, viewModelScope)
-            _qrGatewayRunning.value = started
-        }
-        viewModelScope.launch {
-            qrGateway.incomingPayloads.collect { payload ->
-                submitIncomingQrPayload(payload)
             }
         }
         viewModelScope.launch {
             incomingQrOrders.collect { list ->
                 val latest = list.firstOrNull()
-                if (latest != null && latest.id != _lastAlarmOrderId.value) {
-                    _lastAlarmOrderId.value = latest.id
-                    alarmPlayer.start15SecondAlarm(
-                        scope = viewModelScope,
-                        onTickRemainingSeconds = { sec -> _alarmSecondsRemaining.value = sec },
-                        onCompleted = { _alarmSecondsRemaining.value = 0 }
-                    )
-                } else if (latest == null) {
-                    _lastAlarmOrderId.value = null
-                    _alarmSecondsRemaining.value = 0
-                    alarmPlayer.stop()
+                if (latest != null) {
+                    QrOrderRuntimeHub.triggerIncomingOrderAlert(appContext, latest)
+                } else {
+                    QrOrderRuntimeHub.stopAlarmAndClearNotification(appContext)
                 }
             }
         }
@@ -250,9 +248,52 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        alarmPlayer.stop()
-        qrGateway.stop()
+        // Keep QrOrderRuntimeHub & CashFixOrderAlertService alive when app moves to background
         super.onCleared()
+    }
+
+    fun syncBackgroundAlertService() {
+        val settings = storeSettings.value
+        if (settings.backgroundOrderAlertsEnabled) {
+            CashFixOrderAlertService.start(appContext, settings.qrServerPort, settings.shopNameEn)
+        } else {
+            CashFixOrderAlertService.stop(appContext)
+        }
+    }
+
+    fun toggleAlwaysOnDisplay() {
+        val current = storeSettings.value
+        val next = !current.alwaysOnDisplay
+        viewModelScope.launch {
+            repo.saveStoreSettings(current.copy(alwaysOnDisplay = next))
+            showToast(
+                if (_lang.value == AppLang.AR) {
+                    if (next) "تم تفعيل وضع بقاء الشاشة مضاءة" else "تم إيقاف وضع بقاء الشاشة مضاءة"
+                } else {
+                    if (next) "Always-On Display enabled — Screen stays awake" else "Always-On Display disabled"
+                }
+            )
+        }
+    }
+
+    fun setBackgroundOrderAlertsEnabled(enabled: Boolean) {
+        val current = storeSettings.value
+        viewModelScope.launch {
+            repo.saveStoreSettings(current.copy(backgroundOrderAlertsEnabled = enabled))
+            if (enabled) {
+                CashFixOrderAlertService.start(appContext, current.qrServerPort, current.shopNameEn)
+                showToast(
+                    if (_lang.value == AppLang.AR) "تم تفعيل تنبيهات الطلبات في الخلفية"
+                    else "Background QR Order Alerts active — safe to switch apps"
+                )
+            } else {
+                CashFixOrderAlertService.stop(appContext)
+                showToast(
+                    if (_lang.value == AppLang.AR) "تم إيقاف تنبيهات الخلفية"
+                    else "Background QR Order Alerts paused"
+                )
+            }
+        }
     }
 
     fun toggleLanguage() {
@@ -960,15 +1001,24 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
         val catalog = products.value
         val cartLines = payload.items.mapNotNull { line ->
             val p = catalog.firstOrNull { it.id == line.productId } ?: return@mapNotNull null
+            val extra = line.extraPrice.coerceAtLeast(0.0)
+            val nameEn = if (line.optionNameEn.isNotBlank()) "${p.nameEn} (+ ${line.optionNameEn})" else p.nameEn
+            val nameAr = if (line.optionNameAr.isNotBlank()) "${p.nameAr} (+ ${line.optionNameAr})" else p.nameAr
+            val noteText = when {
+                line.optionNameEn.isBlank() -> ""
+                extra <= 0.001 -> "Offer: ${line.optionNameEn} (FREE)"
+                else -> "Offer: ${line.optionNameEn} (+${formatNumber(extra)} SAR)"
+            }
             CartItem(
                 id = "ci_${UUID.randomUUID().toString().take(8)}",
                 productId = p.id,
-                nameEn = p.nameEn,
-                nameAr = p.nameAr,
-                offlinePrice = p.offlinePrice,
-                onlinePrice = p.onlinePrice,
-                unitPrice = p.offlinePrice,
-                qty = line.qty.coerceAtLeast(1)
+                nameEn = nameEn,
+                nameAr = nameAr,
+                offlinePrice = p.offlinePrice + extra,
+                onlinePrice = p.onlinePrice + extra,
+                unitPrice = p.offlinePrice + extra,
+                qty = line.qty.coerceAtLeast(1),
+                note = noteText
             )
         }
         if (payload.customerName.isBlank()) return
@@ -979,8 +1029,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
         val shiftId = openShift.value?.id ?: order.shiftId
         val cashier = activeCashier.value
         val settings = storeSettings.value
-        alarmPlayer.stop()
-        _alarmSecondsRemaining.value = 0
+        QrOrderRuntimeHub.stopAlarmAndClearNotification(appContext)
         viewModelScope.launch {
             val accepted = order.copy(
                 shiftId = shiftId,
@@ -1002,8 +1051,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun rejectIncomingQrOrder(order: PosOrder) {
-        alarmPlayer.stop()
-        _alarmSecondsRemaining.value = 0
+        QrOrderRuntimeHub.stopAlarmAndClearNotification(appContext)
         viewModelScope.launch {
             repo.saveOrder(order.copy(status = OrderStatus.REJECTED), decrementInventory = false)
             showToast("QR Order ${order.orderNumber} rejected")
@@ -1050,6 +1098,11 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveStoreSettings(s: StoreSettings) = viewModelScope.launch {
         repo.saveStoreSettings(s)
+        if (s.backgroundOrderAlertsEnabled) {
+            CashFixOrderAlertService.start(appContext, s.qrServerPort, s.shopNameEn)
+        } else {
+            CashFixOrderAlertService.stop(appContext)
+        }
         showToast("Shop & Store settings saved")
     }
 }

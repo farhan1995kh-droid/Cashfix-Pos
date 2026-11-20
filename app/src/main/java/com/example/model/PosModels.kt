@@ -162,6 +162,22 @@ data class Product(
     fun priceFor(mode: PricingMode): Double = if (mode == PricingMode.ONLINE) onlinePrice else offlinePrice
 }
 
+/**
+ * Deduplicates available products by ID and normalized bilingual name within each category
+ * so identical items never appear repeatedly in QR self-order menus or POS views.
+ */
+fun List<Product>.deduplicatedAvailable(): List<Product> {
+    val ws = Regex("\\s+")
+    val seenIds = HashSet<String>()
+    val seenKeys = HashSet<String>()
+    return filter { it.isAvailable }.filter { p ->
+        val normEn = p.nameEn.trim().replace(ws, " ").lowercase()
+        val normAr = p.nameAr.trim().replace(ws, " ")
+        val normalizedKey = "${p.categoryId.trim().lowercase()}|$normEn|$normAr"
+        seenIds.add(p.id) && seenKeys.add(normalizedKey)
+    }
+}
+
 @Serializable
 data class CartItem(
     val id: String,
@@ -297,7 +313,9 @@ data class StoreSettings(
     val printerPort: Int = 9100,
     val adminPin: String = "1234",
     val autoKickDrawer: Boolean = true,
-    val qrServerPort: Int = 8090
+    val qrServerPort: Int = 8090,
+    val alwaysOnDisplay: Boolean = true,
+    val backgroundOrderAlertsEnabled: Boolean = true
 ) {
     fun shopDisplayName(lang: AppLang): String = if (lang == AppLang.AR) shopNameAr else shopNameEn
     fun addressDisplay(lang: AppLang): String = if (lang == AppLang.AR) addressAr else addressEn

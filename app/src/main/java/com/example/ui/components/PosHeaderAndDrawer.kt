@@ -53,9 +53,14 @@ fun PosHeaderBar(
     heldCount: Int,
     isOnline: Boolean,
     pendingSyncCount: Int,
+    alwaysOnDisplay: Boolean = settings.alwaysOnDisplay,
+    backgroundAlertsActive: Boolean = false,
+    hasNotificationPermission: Boolean = true,
     onOpenDrawer: () -> Unit,
     onOpenHeldOrders: () -> Unit,
     onSyncNow: () -> Unit,
+    onToggleAlwaysOnDisplay: () -> Unit = {},
+    onClickBackgroundAlertsStatus: () -> Unit = {},
     onToggleLang: () -> Unit,
     onOpenCustomerQrMode: () -> Unit,
     onSwitchCashierClick: () -> Unit
@@ -259,6 +264,91 @@ fun PosHeaderBar(
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+
+                        // Always-On Display (Keep Screen Awake) Toggle Pill
+                        Surface(
+                            onClick = onToggleAlwaysOnDisplay,
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (alwaysOnDisplay) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(
+                                1.dp,
+                                if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            ),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .testTag("header_always_on_btn")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (alwaysOnDisplay) Icons.Default.BrightnessHigh else Icons.Default.BrightnessLow,
+                                    contentDescription = if (lang == AppLang.AR) "الشاشة المضاءة دائماً" else "Always-On Display",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (isWideHeader) {
+                                    Text(
+                                        text = if (alwaysOnDisplay) {
+                                            if (lang == AppLang.AR) "مضاءة" else "Awake"
+                                        } else {
+                                            if (lang == AppLang.AR) "عادي" else "Sleep"
+                                        },
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        // Background Multi-App QR Order Alerts Status Pill
+                        val bgAlertsHealthy = settings.backgroundOrderAlertsEnabled && backgroundAlertsActive && hasNotificationPermission
+                        Surface(
+                            onClick = onClickBackgroundAlertsStatus,
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (bgAlertsHealthy) StatusSuccess.copy(alpha = 0.12f) else StatusWarning.copy(alpha = 0.14f),
+                            border = BorderStroke(
+                                1.dp,
+                                if (bgAlertsHealthy) StatusSuccess.copy(alpha = 0.45f) else StatusWarning.copy(alpha = 0.55f)
+                            ),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .testTag("header_bg_alerts_btn")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(if (bgAlertsHealthy) StatusLiveGreen else StatusWarning)
+                                )
+                                Icon(
+                                    imageVector = if (bgAlertsHealthy) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                                    contentDescription = if (lang == AppLang.AR) "تنبيهات الخلفية" else "Background Order Alerts",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (bgAlertsHealthy) StatusSuccess else StatusWarning
+                                )
+                                if (isWideHeader) {
+                                    Text(
+                                        text = when {
+                                            bgAlertsHealthy -> if (lang == AppLang.AR) "تنبيه خلفي" else "BG Alerts"
+                                            !hasNotificationPermission -> if (lang == AppLang.AR) "فعّل الإشعار" else "Allow Alerts"
+                                            else -> if (lang == AppLang.AR) "تنبيه متوقف" else "Alerts Off"
+                                        },
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (bgAlertsHealthy) StatusSuccess else StatusWarning
                                     )
                                 }
                             }

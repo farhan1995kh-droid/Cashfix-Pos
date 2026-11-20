@@ -69,7 +69,12 @@ fun AdminPanelScreen(
     onSaveCashier: (Cashier) -> Unit,
     onRemoveCashier: (String) -> Unit,
     onSaveOrderSource: (OrderSource) -> Unit,
-    onSaveSettings: (StoreSettings) -> Unit
+    onSaveSettings: (StoreSettings) -> Unit,
+    backgroundAlertsActive: Boolean = false,
+    hasNotificationPermission: Boolean = true,
+    onToggleAlwaysOn: () -> Unit = {},
+    onToggleBackgroundAlerts: (Boolean) -> Unit = {},
+    onRequestNotificationPermission: () -> Unit = {}
 ) {
     val s = stringsFor(lang)
     BackHandler(onBack = onBack)
@@ -125,7 +130,18 @@ fun AdminPanelScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             when (activeTab) {
-                AdminTab.STORE_VAT -> if (isFullAdmin) StoreVatTab(lang, settings, orderSources, onSaveSettings, onSaveOrderSource)
+                AdminTab.STORE_VAT -> if (isFullAdmin) StoreVatTab(
+                    lang = lang,
+                    settings = settings,
+                    orderSources = orderSources,
+                    backgroundAlertsActive = backgroundAlertsActive,
+                    hasNotificationPermission = hasNotificationPermission,
+                    onToggleAlwaysOn = onToggleAlwaysOn,
+                    onToggleBackgroundAlerts = onToggleBackgroundAlerts,
+                    onRequestNotificationPermission = onRequestNotificationPermission,
+                    onSaveSettings = onSaveSettings,
+                    onSaveOrderSource = onSaveOrderSource
+                )
                 AdminTab.CATALOG -> CatalogTab(lang, categories, products, onSaveCategory, onRemoveCategory, onSaveProduct, onImportProductImage, onRemoveProduct)
                 AdminTab.OFFERS -> if (isFullAdmin) OffersTab(lang, categories, products, productOffers, onSaveOffer, onRemoveOffer)
                 AdminTab.TEAM -> if (isFullAdmin) TeamTab(lang, cashiers, onSaveCashier, onRemoveCashier)
@@ -877,6 +893,11 @@ private fun StoreVatTab(
     lang: AppLang,
     settings: StoreSettings,
     orderSources: List<OrderSource>,
+    backgroundAlertsActive: Boolean,
+    hasNotificationPermission: Boolean,
+    onToggleAlwaysOn: () -> Unit,
+    onToggleBackgroundAlerts: (Boolean) -> Unit,
+    onRequestNotificationPermission: () -> Unit,
     onSaveSettings: (StoreSettings) -> Unit,
     onSaveOrderSource: (OrderSource) -> Unit
 ) {
@@ -894,6 +915,8 @@ private fun StoreVatTab(
     var autoKick by remember(settings) { mutableStateOf(settings.autoKickDrawer) }
     var printerIp by remember(settings) { mutableStateOf(settings.printerIp) }
     var printerPort by remember(settings) { mutableStateOf(settings.printerPort.toString()) }
+    var alwaysOn by remember(settings) { mutableStateOf(settings.alwaysOnDisplay) }
+    var bgAlerts by remember(settings) { mutableStateOf(settings.backgroundOrderAlertsEnabled) }
 
     Column(
         modifier = Modifier
@@ -1104,7 +1127,9 @@ private fun StoreVatTab(
                                 autoKickDrawer = autoKick,
                                 printerIp = printerIp.trim().ifBlank { settings.printerIp },
                                 printerPort = printerPort.toIntOrNull() ?: 9100,
-                                paperWidthMm = 80
+                                paperWidthMm = 80,
+                                alwaysOnDisplay = alwaysOn,
+                                backgroundOrderAlertsEnabled = bgAlerts
                             )
                         )
                     },
@@ -1119,6 +1144,156 @@ private fun StoreVatTab(
                         text = if (lang == AppLang.AR) "حفظ إعدادات المتجر والفاتورة 80mm" else "Save Store Setup & 80mm Receipt Settings",
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+
+        // Card 2B: Always-On Display & Background Multi-App QR Order Alerts
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            text = if (lang == AppLang.AR) "بقاء الشاشة مضاءة وتنبيهات الطلبات بالخلفية" else "Always-On Display & Multi-App Alerts",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    val alertStatusHealthy = bgAlerts && backgroundAlertsActive && hasNotificationPermission
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (alertStatusHealthy) StatusSuccess.copy(alpha = 0.14f) else MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Text(
+                            text = when {
+                                alertStatusHealthy -> if (lang == AppLang.AR) "نشط بالخلفية" else "BG Active"
+                                !hasNotificationPermission -> if (lang == AppLang.AR) "الإذن مطلوب" else "Permission Needed"
+                                else -> if (lang == AppLang.AR) "متوقف" else "Paused"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (alertStatusHealthy) StatusSuccess else StatusDanger,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                // Always-On Display Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (lang == AppLang.AR) "وضع الشاشة المضاءة دائماً (Always-On Display)" else "Always-On Display (Keep Screen Awake)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (lang == AppLang.AR) {
+                                "يمنع إطفاء شاشة نقطة البيع أثناء الوردية النشطة"
+                            } else {
+                                "Prevents accidental screen sleep while CashFix POS is open during active shifts."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = alwaysOn,
+                        onCheckedChange = {
+                            alwaysOn = it
+                            onToggleAlwaysOn()
+                        },
+                        modifier = Modifier.testTag("settings_always_on_switch")
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+
+                // Background Multi-App Order Alerts Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (lang == AppLang.AR) "تنبيه وجرس 15 ثانية بالخلفية (تعدد التطبيقات)" else "Background QR Order Alerts & 15s Alarm",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (lang == AppLang.AR) {
+                                "يعمل حتى عند فتح تطبيق كاشير آخر (مثل Tabsense) مع إشعار علوي وصوت واهتزاز"
+                            } else {
+                                "Keeps QR polling & 15s sound/vibration alarm active even when another POS app (e.g., Tabsense) is open."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = bgAlerts,
+                        onCheckedChange = { enabled ->
+                            bgAlerts = enabled
+                            onToggleBackgroundAlerts(enabled)
+                            if (enabled && !hasNotificationPermission) {
+                                onRequestNotificationPermission()
+                            }
+                        },
+                        modifier = Modifier.testTag("settings_bg_alerts_switch")
+                    )
+                }
+
+                if (!hasNotificationPermission) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                        border = BorderStroke(1.dp, StatusDanger.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (lang == AppLang.AR) {
+                                    "امنح إذن الإشعارات لاستلام تنبيهات طلبات QR عند التصغير."
+                                } else {
+                                    "Grant notification permission to receive heads-up QR alerts when backgrounded."
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            FilledTonalButton(
+                                onClick = onRequestNotificationPermission,
+                                modifier = Modifier.testTag("grant_notification_permission_btn")
+                            ) {
+                                Text(if (lang == AppLang.AR) "منح الإذن" else "Allow Alerts")
+                            }
+                        }
+                    }
                 }
             }
         }

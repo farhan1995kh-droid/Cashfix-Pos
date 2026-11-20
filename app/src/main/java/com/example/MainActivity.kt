@@ -1,9 +1,15 @@
 package com.example
 
+import android.Manifest
+import android.app.Activity
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
@@ -13,9 +19,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hardware.QrOrderRuntimeHub
 import com.example.i18n.LocalAppLang
 import com.example.i18n.layoutDirection
 import com.example.model.OrderStatus
@@ -74,6 +82,57 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
     val discoveredPrinters by vm.discoveredPrinters.collectAsStateWithLifecycle()
     val isScanningPrinters by vm.isScanningPrinters.collectAsStateWithLifecycle()
     val qrGatewayRunning by vm.qrGatewayRunning.collectAsStateWithLifecycle()
+    val backgroundAlertsActive by vm.backgroundAlertsActive.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    var showOpeningMotion by rememberSaveable { mutableStateOf(true) }
+    var hasNotificationPermission by remember {
+        mutableStateOf(QrOrderRuntimeHub.hasNotificationPermission(context))
+    }
+    var hasPromptedNotificationPermission by rememberSaveable { mutableStateOf(false) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasNotificationPermission = granted || QrOrderRuntimeHub.hasNotificationPermission(context)
+        vm.syncBackgroundAlertService()
+    }
+
+    val requestNotificationPermissionIfNeeded: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !QrOrderRuntimeHub.hasNotificationPermission(context)) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            hasNotificationPermission = true
+            vm.syncBackgroundAlertService()
+        }
+    }
+
+    // Always-On Display (Keep Screen Awake) via Android WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    DisposableEffect(context, settings.alwaysOnDisplay) {
+        val window = (context as? Activity)?.window
+        if (settings.alwaysOnDisplay) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // Sync Foreground Background-Alert Service & request POST_NOTIFICATIONS cleanly once on Android 13+
+    LaunchedEffect(settings.backgroundOrderAlertsEnabled, hasNotificationPermission, showOpeningMotion) {
+        vm.syncBackgroundAlertService()
+        if (!showOpeningMotion &&
+            settings.backgroundOrderAlertsEnabled &&
+            !hasNotificationPermission &&
+            !hasPromptedNotificationPermission &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        ) {
+            hasPromptedNotificationPermission = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     val heldOrders = remember(orders) { orders.filter { it.status == OrderStatus.HELD } }
 
@@ -83,7 +142,6 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
     var showZReportDialog by remember { mutableStateOf(false) }
     var showSetFloatDialog by remember { mutableStateOf(false) }
     var pendingAdminDestination by remember { mutableStateOf<ActiveDestination?>(null) }
-    var showOpeningMotion by rememberSaveable { mutableStateOf(true) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -180,9 +238,20 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
                                     heldCount = heldOrders.size,
                                     isOnline = isOnline,
                                     pendingSyncCount = pendingSyncCount,
+                                    alwaysOnDisplay = settings.alwaysOnDisplay,
+                                    backgroundAlertsActive = backgroundAlertsActive,
+                                    hasNotificationPermission = hasNotificationPermission,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
                                     onOpenHeldOrders = { vm.navigateTo(ActiveDestination.HELD_ORDERS) },
                                     onSyncNow = { vm.manualCloudSync() },
+                                    onToggleAlwaysOnDisplay = { vm.toggleAlwaysOnDisplay() },
+                                    onClickBackgroundAlertsStatus = {
+                                        if (!hasNotificationPermission) {
+                                            requestNotificationPermissionIfNeeded()
+                                        } else {
+                                            vm.setBackgroundOrderAlertsEnabled(!settings.backgroundOrderAlertsEnabled)
+                                        }
+                                    },
                                     onToggleLang = { vm.toggleLanguage() },
                                     onOpenCustomerQrMode = { vm.navigateTo(ActiveDestination.CUSTOMER_QR_MODE) },
                                     onSwitchCashierClick = { showSwitchCashierDialog = true }
@@ -293,7 +362,12 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
                                             onSaveCashier = { vm.saveCashier(it) },
                                             onRemoveCashier = { vm.removeCashier(it) },
                                             onSaveOrderSource = { vm.saveOrderSource(it) },
-                                            onSaveSettings = { vm.saveStoreSettings(it) }
+                                            onSaveSettings = { vm.saveStoreSettings(it) },
+                                            backgroundAlertsActive = backgroundAlertsActive,
+                                            hasNotificationPermission = hasNotificationPermission,
+                                            onToggleAlwaysOn = { vm.toggleAlwaysOnDisplay() },
+                                            onToggleBackgroundAlerts = { enabled -> vm.setBackgroundOrderAlertsEnabled(enabled) },
+                                            onRequestNotificationPermission = requestNotificationPermissionIfNeeded
                                         )
                                     }
 

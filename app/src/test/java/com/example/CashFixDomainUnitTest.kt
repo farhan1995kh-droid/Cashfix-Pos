@@ -525,6 +525,8 @@ class CashFixDomainUnitTest {
         assertTrue(html.contains("Table: T2"))
         assertTrue(html.contains("Burgers & Sandwiches"))
         assertTrue(html.contains("navigator.wakeLock.request('screen')"))
+        assertFalse(html.contains("wakeBtn"))
+        assertFalse(html.contains("updateWakeBtn"))
         assertTrue(html.contains("grid-template-columns:repeat(2,1fr)"))
         assertTrue(html.contains("searchInput"))
         assertTrue(html.contains("catStrip"))
@@ -547,5 +549,19 @@ class CashFixDomainUnitTest {
             shopName = "Crispy Nation"
         )
         assertNotNull(monitorNotification)
+
+        val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+        val incomingChannel = notificationManager.getNotificationChannel(
+            com.example.hardware.QrOrderRuntimeHub.CHANNEL_INCOMING_ORDER
+        )
+        assertNotNull(incomingChannel)
+        assertNull(incomingChannel.sound)
+    }
+
+    @Test
+    fun incomingOrderChimeSynthesizesAppOwnAudioBuffer() {
+        val pcm = com.example.hardware.AlarmSoundPlayer.synthesizeCashFixOrderChimePcm()
+        assertTrue(pcm.isNotEmpty())
+        assertTrue(pcm.any { it != 0.toShort() })
     }
 }

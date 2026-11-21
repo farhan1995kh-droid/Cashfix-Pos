@@ -10,8 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -36,7 +34,7 @@ import java.util.UUID
  */
 object QrOrderRuntimeHub {
     const val CHANNEL_BG_MONITOR = "cashfix_bg_monitor"
-    const val CHANNEL_INCOMING_ORDER = "cashfix_incoming_qr_alarm_v2"
+    const val CHANNEL_INCOMING_ORDER = "cashfix_incoming_qr_app_chime_v3"
     const val FOREGROUND_NOTIFICATION_ID = 4101
     const val INCOMING_ORDER_NOTIFICATION_ID = 4102
 
@@ -114,23 +112,18 @@ object QrOrderRuntimeHub {
             enableVibration(false)
         }
 
-        val alarmSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val audioAttrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-
+        // Visual heads-up notification channel with NO system alarm/ringtone audio —
+        // CashFix POS plays ONLY its own built-in app chime via AlarmSoundPlayer.
         val incomingChannel = NotificationChannel(
             CHANNEL_INCOMING_ORDER,
-            "Incoming QR Order Alerts (15s Alarm)",
+            "Incoming QR Order Alerts (App Chime)",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "High-priority audible & vibration alerts for incoming QR table orders."
+            description = "Heads-up visual banner for incoming QR orders (uses CashFix POS built-in chime, no system alarm)."
             enableLights(true)
             enableVibration(true)
-            vibrationPattern = longArrayOf(0, 350, 200, 350, 200, 350)
-            setSound(alarmSoundUri, audioAttrs)
+            vibrationPattern = longArrayOf(0, 260, 180, 260)
+            setSound(null, null)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
 
@@ -243,23 +236,19 @@ object QrOrderRuntimeHub {
         val title = "New QR Order ${order.orderNumber} • ${formatNumber(order.grandTotal)} SAR"
         val text = "$tableTag${order.customerName} ($itemCount items): $itemsSummary"
 
-        val alarmSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
         val notification = NotificationCompat.Builder(context, CHANNEL_INCOMING_ORDER)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$text\nTap to open CashFix POS and Accept/Print Kitchen Memo."))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
-            .setSound(alarmSoundUri)
-            .setVibrate(longArrayOf(0, 350, 200, 350, 200, 350))
+            .setSilent(true)
             .setContentIntent(openPending)
             .addAction(0, "Open & Accept", openPending)
-            .addAction(0, "Silence Alarm", silencePending)
+            .addAction(0, "Silence Chime", silencePending)
             .build()
 
         runCatching {

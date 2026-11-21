@@ -254,46 +254,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     fun syncBackgroundAlertService() {
         val settings = storeSettings.value
-        if (settings.backgroundOrderAlertsEnabled) {
-            CashFixOrderAlertService.start(appContext, settings.qrServerPort, settings.shopNameEn)
-        } else {
-            CashFixOrderAlertService.stop(appContext)
-        }
-    }
-
-    fun toggleAlwaysOnDisplay() {
-        val current = storeSettings.value
-        val next = !current.alwaysOnDisplay
-        viewModelScope.launch {
-            repo.saveStoreSettings(current.copy(alwaysOnDisplay = next))
-            showToast(
-                if (_lang.value == AppLang.AR) {
-                    if (next) "تم تفعيل وضع بقاء الشاشة مضاءة" else "تم إيقاف وضع بقاء الشاشة مضاءة"
-                } else {
-                    if (next) "Always-On Display enabled — Screen stays awake" else "Always-On Display disabled"
-                }
-            )
-        }
-    }
-
-    fun setBackgroundOrderAlertsEnabled(enabled: Boolean) {
-        val current = storeSettings.value
-        viewModelScope.launch {
-            repo.saveStoreSettings(current.copy(backgroundOrderAlertsEnabled = enabled))
-            if (enabled) {
-                CashFixOrderAlertService.start(appContext, current.qrServerPort, current.shopNameEn)
-                showToast(
-                    if (_lang.value == AppLang.AR) "تم تفعيل تنبيهات الطلبات في الخلفية"
-                    else "Background QR Order Alerts active — safe to switch apps"
-                )
-            } else {
-                CashFixOrderAlertService.stop(appContext)
-                showToast(
-                    if (_lang.value == AppLang.AR) "تم إيقاف تنبيهات الخلفية"
-                    else "Background QR Order Alerts paused"
-                )
-            }
-        }
+        CashFixOrderAlertService.start(appContext, settings.qrServerPort, settings.shopNameEn)
     }
 
     fun toggleLanguage() {
@@ -1097,12 +1058,9 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     fun removeCustomer(id: String) = viewModelScope.launch { repo.deleteCustomer(id) }
 
     fun saveStoreSettings(s: StoreSettings) = viewModelScope.launch {
-        repo.saveStoreSettings(s)
-        if (s.backgroundOrderAlertsEnabled) {
-            CashFixOrderAlertService.start(appContext, s.qrServerPort, s.shopNameEn)
-        } else {
-            CashFixOrderAlertService.stop(appContext)
-        }
+        val enforced = s.copy(alwaysOnDisplay = true, backgroundOrderAlertsEnabled = true)
+        repo.saveStoreSettings(enforced)
+        CashFixOrderAlertService.start(appContext, enforced.qrServerPort, enforced.shopNameEn)
         showToast("Shop & Store settings saved")
     }
 }

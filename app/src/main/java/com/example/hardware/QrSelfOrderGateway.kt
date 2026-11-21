@@ -446,7 +446,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans A
     </div>
     <div class="top-actions">
       <span class="table-badge" id="tableBadge" style="${if (safeTable.isBlank()) "display:none" else ""}">Table: $safeTable</span>
-      <button class="pill-btn" id="wakeBtn" type="button" onclick="toggleWakeLock()">Screen Awake</button>
       <button class="pill-btn active" id="langBtn" type="button" onclick="toggleLang()">العربية</button>
     </div>
   </div>
@@ -520,30 +519,14 @@ async function acquireWakeLock() {
   try {
     if ('wakeLock' in navigator && !wakeLockSentinel) {
       wakeLockSentinel = await navigator.wakeLock.request('screen');
-      wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; updateWakeBtn(); });
-      updateWakeBtn();
+      wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
     }
   } catch (e) {}
-}
-async function toggleWakeLock() {
-  if (wakeLockSentinel) {
-    try { await wakeLockSentinel.release(); } catch(e) {}
-    wakeLockSentinel = null;
-    updateWakeBtn();
-  } else {
-    await acquireWakeLock();
-  }
-}
-function updateWakeBtn() {
-  const b = document.getElementById('wakeBtn');
-  if (!b) return;
-  const active = !!wakeLockSentinel;
-  b.classList.toggle('active', active);
-  b.textContent = lang === 'ar' ? (active ? 'الشاشة نشطة' : 'تفعيل الشاشة') : (active ? 'Awake ON' : 'Keep Awake');
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') acquireWakeLock();
 });
+document.addEventListener('pointerdown', () => { acquireWakeLock(); }, { passive: true });
 acquireWakeLock();
 
 function t(en, ar) { return lang === 'ar' ? ar : en; }
@@ -575,7 +558,6 @@ function toggleLang() {
   document.getElementById('submitBtn').textContent = t('Send Order to Kitchen', 'إرسال الطلب للمطبخ');
   document.getElementById('cartModalTitle').textContent = t('Your Order', 'ملخص طلبك');
   syncTableBadge();
-  updateWakeBtn();
   renderCategories();
   renderMenu();
   renderCartBar();

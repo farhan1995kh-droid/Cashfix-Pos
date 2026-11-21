@@ -107,24 +107,19 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
         }
     }
 
-    // Always-On Display (Keep Screen Awake) via Android WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-    DisposableEffect(context, settings.alwaysOnDisplay) {
+    // Always-On Display (Keep Screen Awake) permanently forced enabled during shifts
+    DisposableEffect(context) {
         val window = (context as? Activity)?.window
-        if (settings.alwaysOnDisplay) {
-            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
-    // Sync Foreground Background-Alert Service & request POST_NOTIFICATIONS cleanly once on Android 13+
-    LaunchedEffect(settings.backgroundOrderAlertsEnabled, hasNotificationPermission, showOpeningMotion) {
+    // Background Active Order Monitoring permanently forced enabled + Android 13+ notification permission check
+    LaunchedEffect(hasNotificationPermission, showOpeningMotion) {
         vm.syncBackgroundAlertService()
         if (!showOpeningMotion &&
-            settings.backgroundOrderAlertsEnabled &&
             !hasNotificationPermission &&
             !hasPromptedNotificationPermission &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -238,20 +233,9 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
                                     heldCount = heldOrders.size,
                                     isOnline = isOnline,
                                     pendingSyncCount = pendingSyncCount,
-                                    alwaysOnDisplay = settings.alwaysOnDisplay,
-                                    backgroundAlertsActive = backgroundAlertsActive,
-                                    hasNotificationPermission = hasNotificationPermission,
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
                                     onOpenHeldOrders = { vm.navigateTo(ActiveDestination.HELD_ORDERS) },
                                     onSyncNow = { vm.manualCloudSync() },
-                                    onToggleAlwaysOnDisplay = { vm.toggleAlwaysOnDisplay() },
-                                    onClickBackgroundAlertsStatus = {
-                                        if (!hasNotificationPermission) {
-                                            requestNotificationPermissionIfNeeded()
-                                        } else {
-                                            vm.setBackgroundOrderAlertsEnabled(!settings.backgroundOrderAlertsEnabled)
-                                        }
-                                    },
                                     onToggleLang = { vm.toggleLanguage() },
                                     onOpenCustomerQrMode = { vm.navigateTo(ActiveDestination.CUSTOMER_QR_MODE) },
                                     onSwitchCashierClick = { showSwitchCashierDialog = true }
@@ -365,8 +349,6 @@ fun CashFixApp(vm: PosViewModel = viewModel()) {
                                             onSaveSettings = { vm.saveStoreSettings(it) },
                                             backgroundAlertsActive = backgroundAlertsActive,
                                             hasNotificationPermission = hasNotificationPermission,
-                                            onToggleAlwaysOn = { vm.toggleAlwaysOnDisplay() },
-                                            onToggleBackgroundAlerts = { enabled -> vm.setBackgroundOrderAlertsEnabled(enabled) },
                                             onRequestNotificationPermission = requestNotificationPermissionIfNeeded
                                         )
                                     }

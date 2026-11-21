@@ -53,14 +53,9 @@ fun PosHeaderBar(
     heldCount: Int,
     isOnline: Boolean,
     pendingSyncCount: Int,
-    alwaysOnDisplay: Boolean = settings.alwaysOnDisplay,
-    backgroundAlertsActive: Boolean = false,
-    hasNotificationPermission: Boolean = true,
     onOpenDrawer: () -> Unit,
     onOpenHeldOrders: () -> Unit,
     onSyncNow: () -> Unit,
-    onToggleAlwaysOnDisplay: () -> Unit = {},
-    onClickBackgroundAlertsStatus: () -> Unit = {},
     onToggleLang: () -> Unit,
     onOpenCustomerQrMode: () -> Unit,
     onSwitchCashierClick: () -> Unit
@@ -264,91 +259,6 @@ fun PosHeaderBar(
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-
-                        // Always-On Display (Keep Screen Awake) Toggle Pill
-                        Surface(
-                            onClick = onToggleAlwaysOnDisplay,
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (alwaysOnDisplay) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(
-                                1.dp,
-                                if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            ),
-                            modifier = Modifier
-                                .height(40.dp)
-                                .testTag("header_always_on_btn")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (alwaysOnDisplay) Icons.Default.BrightnessHigh else Icons.Default.BrightnessLow,
-                                    contentDescription = if (lang == AppLang.AR) "الشاشة المضاءة دائماً" else "Always-On Display",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (isWideHeader) {
-                                    Text(
-                                        text = if (alwaysOnDisplay) {
-                                            if (lang == AppLang.AR) "مضاءة" else "Awake"
-                                        } else {
-                                            if (lang == AppLang.AR) "عادي" else "Sleep"
-                                        },
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (alwaysOnDisplay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
-                        // Background Multi-App QR Order Alerts Status Pill
-                        val bgAlertsHealthy = settings.backgroundOrderAlertsEnabled && backgroundAlertsActive && hasNotificationPermission
-                        Surface(
-                            onClick = onClickBackgroundAlertsStatus,
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (bgAlertsHealthy) StatusSuccess.copy(alpha = 0.12f) else StatusWarning.copy(alpha = 0.14f),
-                            border = BorderStroke(
-                                1.dp,
-                                if (bgAlertsHealthy) StatusSuccess.copy(alpha = 0.45f) else StatusWarning.copy(alpha = 0.55f)
-                            ),
-                            modifier = Modifier
-                                .height(40.dp)
-                                .testTag("header_bg_alerts_btn")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(if (bgAlertsHealthy) StatusLiveGreen else StatusWarning)
-                                )
-                                Icon(
-                                    imageVector = if (bgAlertsHealthy) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
-                                    contentDescription = if (lang == AppLang.AR) "تنبيهات الخلفية" else "Background Order Alerts",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (bgAlertsHealthy) StatusSuccess else StatusWarning
-                                )
-                                if (isWideHeader) {
-                                    Text(
-                                        text = when {
-                                            bgAlertsHealthy -> if (lang == AppLang.AR) "تنبيه خلفي" else "BG Alerts"
-                                            !hasNotificationPermission -> if (lang == AppLang.AR) "فعّل الإشعار" else "Allow Alerts"
-                                            else -> if (lang == AppLang.AR) "تنبيه متوقف" else "Alerts Off"
-                                        },
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (bgAlertsHealthy) StatusSuccess else StatusWarning
                                     )
                                 }
                             }
@@ -744,7 +654,7 @@ fun PosNavigationDrawerContent(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-            // Scrollable Main Menu Items
+            // Scrollable Main Menu Items — every folder/menu card uses uniform 56.dp height & identical sizing
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -761,91 +671,38 @@ fun PosNavigationDrawerContent(
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
 
-                // Featured Live Shift Sales Summary Gradient Card
-                Surface(
-                    onClick = { onCloseDrawer(); onOpenLiveShiftSummary() },
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color.Transparent,
-                    shadowElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF3B82F6), Color(0xFF4F46E5))
-                                )
-                            )
-                            .padding(horizontal = 14.dp, vertical = 14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Color.White.copy(alpha = 0.20f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        text = s.liveShiftSummary,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = if (lang == AppLang.AR) "النقد ومدى وفيزا والتطبيقات" else "Gross, Cash, Mada & Apps",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color(0xFFDBEAFE)
-                                    )
-                                }
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = StatusLiveGreen
-                            ) {
-                                Text(
-                                    text = "LIVE",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                DrawerNavItem(
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    label = s.liveShiftSummary,
+                    badgeText = "LIVE",
+                    badgeBgColor = StatusLiveGreen,
+                    badgeTextColor = Color.White,
+                    showBadgeLockIcon = false,
+                    selected = false,
+                    testTagName = "drawer_live_shift_btn",
+                    onClick = { onCloseDrawer(); onOpenLiveShiftSummary() }
+                )
 
                 DrawerNavItem(
                     icon = Icons.Default.ShoppingBag,
                     iconTint = MaterialTheme.colorScheme.primary,
                     label = if (lang == AppLang.AR) "نقطة البيع (الكاشير)" else "Cashier POS",
                     selected = activeDestination == ActiveDestination.POS_REGISTER,
+                    testTagName = "drawer_pos_register_btn",
                     onClick = { onNavigate(ActiveDestination.POS_REGISTER); onCloseDrawer() }
                 )
 
                 DrawerNavItem(
                     icon = Icons.Default.Schedule,
-                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    label = if (lang == AppLang.AR) "${s.heldOrders} ($heldCount)" else "Advance / Held Orders ($heldCount)",
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    label = if (lang == AppLang.AR) s.heldOrders else "Advance / Held Orders",
+                    badgeText = "$heldCount",
+                    badgeBgColor = if (heldCount > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    badgeTextColor = if (heldCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    showBadgeLockIcon = false,
                     selected = activeDestination == ActiveDestination.HELD_ORDERS,
+                    testTagName = "drawer_held_orders_btn",
                     onClick = { onNavigate(ActiveDestination.HELD_ORDERS); onCloseDrawer() }
                 )
 
@@ -855,6 +712,7 @@ fun PosNavigationDrawerContent(
                         iconTint = MaterialTheme.colorScheme.primary,
                         label = s.salesHistory,
                         selected = activeDestination == ActiveDestination.SALES_HISTORY,
+                        testTagName = "drawer_sales_history_btn",
                         onClick = { onNavigate(ActiveDestination.SALES_HISTORY); onCloseDrawer() }
                     )
                 }
@@ -866,6 +724,7 @@ fun PosNavigationDrawerContent(
                         iconTint = MaterialTheme.colorScheme.primary,
                         label = s.menuCustomizationTitle,
                         selected = activeDestination == ActiveDestination.ADMIN_PANEL,
+                        testTagName = "drawer_custom_menu_btn",
                         onClick = { onCloseDrawer(); onOpenCustomMenuDirect() }
                     )
                 }
@@ -877,6 +736,7 @@ fun PosNavigationDrawerContent(
                     label = if (lang == AppLang.AR) "إعدادات الإدارة" else "Admin Settings",
                     badgeText = "ADMIN PIN",
                     selected = activeDestination == ActiveDestination.ADMIN_PANEL && canAccessAdmin,
+                    testTagName = "drawer_admin_settings_btn",
                     onClick = { onCloseDrawer(); onOpenManagementLocked() }
                 )
 
@@ -885,6 +745,7 @@ fun PosNavigationDrawerContent(
                     iconTint = MaterialTheme.colorScheme.primary,
                     label = s.customerQrPreview,
                     selected = activeDestination == ActiveDestination.CUSTOMER_QR_MODE,
+                    testTagName = "drawer_customer_qr_btn",
                     onClick = { onNavigate(ActiveDestination.CUSTOMER_QR_MODE); onCloseDrawer() }
                 )
 
@@ -894,6 +755,7 @@ fun PosNavigationDrawerContent(
                     label = s.customerDirectoryCrm,
                     badgeText = "ADMIN PIN",
                     selected = activeDestination == ActiveDestination.CUSTOMER_CRM,
+                    testTagName = "drawer_customer_crm_btn",
                     onClick = { onCloseDrawer(); onOpenCustomerCrmLocked() }
                 )
 
@@ -901,7 +763,7 @@ fun PosNavigationDrawerContent(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 Spacer(Modifier.height(2.dp))
 
-                // Hardware & Drawer Section (matches Screenshot 3)
+                // Hardware & Drawer Section — uses exact same uniform DrawerNavItem sizing
                 Text(
                     text = if (lang == AppLang.AR) "الطابعة ودرج النقدية" else "HARDWARE & DRAWER",
                     style = MaterialTheme.typography.labelSmall,
@@ -911,82 +773,31 @@ fun PosNavigationDrawerContent(
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
 
-                Surface(
-                    onClick = { onCloseDrawer(); onKickCashDrawer() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LockOpen,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = if (lang == AppLang.AR) "فتح درج النقدية" else "Open Cash Drawer",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        Text(
-                            text = "[27, 112, 0]",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                DrawerNavItem(
+                    icon = Icons.Default.LockOpen,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    label = if (lang == AppLang.AR) "فتح درج النقدية" else "Open Cash Drawer",
+                    badgeText = "PULSE",
+                    badgeBgColor = MaterialTheme.colorScheme.surfaceVariant,
+                    badgeTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    showBadgeLockIcon = false,
+                    selected = false,
+                    testTagName = "drawer_kick_cash_drawer_btn",
+                    onClick = { onCloseDrawer(); onKickCashDrawer() }
+                )
 
-                Surface(
-                    onClick = { onNavigate(ActiveDestination.PRINTER_SETTINGS); onCloseDrawer() },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (activeDestination == ActiveDestination.PRINTER_SETTINGS) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    modifier = Modifier.testTag("drawer_printer_settings_btn")
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Print,
-                                contentDescription = s.printerSettingsTitle,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = s.printerSettingsTitle,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        Text(
-                            text = "${settings.printerIp}:${settings.printerPort}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            color = StatusSuccess
-                        )
-                    }
-                }
+                DrawerNavItem(
+                    icon = Icons.Default.Print,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    label = s.printerSettingsTitle,
+                    badgeText = "80mm",
+                    badgeBgColor = StatusSuccess.copy(alpha = 0.14f),
+                    badgeTextColor = StatusSuccess,
+                    showBadgeLockIcon = false,
+                    selected = activeDestination == ActiveDestination.PRINTER_SETTINGS,
+                    testTagName = "drawer_printer_settings_btn",
+                    onClick = { onNavigate(ActiveDestination.PRINTER_SETTINGS); onCloseDrawer() }
+                )
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -1049,79 +860,103 @@ fun PosNavigationDrawerContent(
     }
 }
 
+/**
+ * Uniform fixed-height (56.dp) sidebar menu / folder row ensuring every item in the
+ * navigation drawer shares identical dimensions, padding, icon alignment, and typography.
+ */
 @Composable
 private fun DrawerNavItem(
     icon: ImageVector,
     iconTint: Color,
     label: String,
     badgeText: String? = null,
+    badgeBgColor: Color = GoldLightContainer,
+    badgeTextColor: Color = GoldTertiary,
+    showBadgeLockIcon: Boolean = true,
     selected: Boolean,
+    testTagName: String? = null,
     onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)),
         shadowElevation = if (selected) 2.dp else 0.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .let { if (testTagName != null) it.testTag(testTagName) else it }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(
+                        if (selected) Color.White.copy(alpha = 0.20f)
+                        else iconTint.copy(alpha = 0.12f)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = if (selected) Color.White else iconTint,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (badgeText != null && !selected) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = GoldLightContainer
+            }
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (badgeText != null) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (selected) Color.White.copy(alpha = 0.22f) else badgeBgColor
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
+                        if (showBadgeLockIcon) {
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = GoldTertiary,
+                                tint = if (selected) Color.White else badgeTextColor,
                                 modifier = Modifier.size(10.dp)
                             )
-                            Text(
-                                text = badgeText,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = GoldTertiary
-                            )
                         }
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (selected) Color.White else badgeTextColor,
+                            maxLines = 1
+                        )
                     }
                 }
             }
+
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                 modifier = Modifier.size(18.dp)
             )
         }
